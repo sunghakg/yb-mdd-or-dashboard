@@ -817,8 +817,8 @@ with tabs[7]:
             from alpaca.trading.enums import QueryOrderStatus
             import datetime as _dt
             tc = TradingClient(
-                api_key=os.environ["ALPACA_API_KEY"],
-                secret_key=os.environ["ALPACA_SECRET_KEY"],
+                api_key=_os.environ["ALPACA_API_KEY"],
+                secret_key=_os.environ["ALPACA_SECRET_KEY"],
                 paper=True,
             )
             account = tc.get_account()
