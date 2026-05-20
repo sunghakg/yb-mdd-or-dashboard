@@ -743,11 +743,11 @@ with tabs[6]:
             from alpaca.trading.requests import GetOrdersRequest
             from alpaca.trading.enums import QueryOrderStatus
             import datetime as _dt
-            tc = TradingClient(
-                api_key=_os.environ["ALPACA_API_KEY"],
-                secret_key=_os.environ["ALPACA_SECRET_KEY"],
-                paper=True,
-            )
+            key = _os.environ.get("ALPACA_API_KEY")
+            secret = _os.environ.get("ALPACA_SECRET_KEY")
+            if not key or not secret:
+                return {"error": "Streamlit Cloud Secrets에 ALPACA_API_KEY / ALPACA_SECRET_KEY 등록이 필요합니다. (앱 메뉴 → Settings → Secrets)"}
+            tc = TradingClient(api_key=key, secret_key=secret, paper=True)
             account = tc.get_account()
             positions = tc.get_all_positions()
             today_utc = _dt.datetime.now(_dt.timezone.utc).replace(
