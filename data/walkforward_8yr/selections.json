@@ -1,0 +1,266 @@
+[
+  {
+    "date": "2020-06-04",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 1.997,
+      "YB_Consensus_80_60_40": 1.712,
+      "YB_HybridAND_80_60_40": 2.384,
+      "YB_MDD_AND_60_40_20": 2.318,
+      "GB_intraday_opt": 3.214
+    }
+  },
+  {
+    "date": "2020-09-02",
+    "active": "YB_MDD_AND_60_40_20",
+    "scores": {
+      "YB_RSI_70_60_50": 1.309,
+      "YB_Consensus_80_60_40": 0.989,
+      "YB_HybridAND_80_60_40": 1.482,
+      "YB_MDD_AND_60_40_20": 1.496,
+      "GB_intraday_opt": 0.933
+    }
+  },
+  {
+    "date": "2020-12-02",
+    "active": "YB_MDD_AND_60_40_20",
+    "scores": {
+      "YB_RSI_70_60_50": 1.943,
+      "YB_Consensus_80_60_40": 1.484,
+      "YB_HybridAND_80_60_40": 2.1,
+      "YB_MDD_AND_60_40_20": 2.145,
+      "GB_intraday_opt": 1.127
+    }
+  },
+  {
+    "date": "2021-03-05",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 4.317,
+      "YB_Consensus_80_60_40": 3.908,
+      "YB_HybridAND_80_60_40": 4.017,
+      "YB_MDD_AND_60_40_20": 3.935,
+      "GB_intraday_opt": 1.296
+    }
+  },
+  {
+    "date": "2021-06-04",
+    "active": "YB_MDD_AND_60_40_20",
+    "scores": {
+      "YB_RSI_70_60_50": 5.463,
+      "YB_Consensus_80_60_40": 5.817,
+      "YB_HybridAND_80_60_40": 5.817,
+      "YB_MDD_AND_60_40_20": 6.084,
+      "GB_intraday_opt": 2.284
+    }
+  },
+  {
+    "date": "2021-09-02",
+    "active": "YB_MDD_AND_60_40_20",
+    "scores": {
+      "YB_RSI_70_60_50": 8.515,
+      "YB_Consensus_80_60_40": 9.148,
+      "YB_HybridAND_80_60_40": 9.148,
+      "YB_MDD_AND_60_40_20": 9.319,
+      "GB_intraday_opt": 3.723
+    }
+  },
+  {
+    "date": "2021-12-02",
+    "active": "YB_Consensus_80_60_40",
+    "scores": {
+      "YB_RSI_70_60_50": 8.675,
+      "YB_Consensus_80_60_40": 9.545,
+      "YB_HybridAND_80_60_40": 9.545,
+      "YB_MDD_AND_60_40_20": 9.217,
+      "GB_intraday_opt": 6.13
+    }
+  },
+  {
+    "date": "2022-03-04",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 2.968,
+      "YB_Consensus_80_60_40": 3.023,
+      "YB_HybridAND_80_60_40": 2.547,
+      "YB_MDD_AND_60_40_20": 2.721,
+      "GB_intraday_opt": 4.163
+    }
+  },
+  {
+    "date": "2022-06-03",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 3.112,
+      "YB_Consensus_80_60_40": 2.615,
+      "YB_HybridAND_80_60_40": 2.374,
+      "YB_MDD_AND_60_40_20": 2.389,
+      "GB_intraday_opt": 2.166
+    }
+  },
+  {
+    "date": "2022-09-02",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 1.946,
+      "YB_Consensus_80_60_40": 1.483,
+      "YB_HybridAND_80_60_40": 1.33,
+      "YB_MDD_AND_60_40_20": 1.381,
+      "GB_intraday_opt": 0.886
+    }
+  },
+  {
+    "date": "2022-12-02",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 1.438,
+      "YB_Consensus_80_60_40": 0.946,
+      "YB_HybridAND_80_60_40": 0.893,
+      "YB_MDD_AND_60_40_20": 1.095,
+      "GB_intraday_opt": -0.01
+    }
+  },
+  {
+    "date": "2023-03-07",
+    "active": "YB_HybridAND_80_60_40",
+    "scores": {
+      "YB_RSI_70_60_50": 3.99,
+      "YB_Consensus_80_60_40": 3.729,
+      "YB_HybridAND_80_60_40": 4.363,
+      "YB_MDD_AND_60_40_20": 4.187,
+      "GB_intraday_opt": -0.675
+    }
+  },
+  {
+    "date": "2023-06-06",
+    "active": "YB_HybridAND_80_60_40",
+    "scores": {
+      "YB_RSI_70_60_50": 1.858,
+      "YB_Consensus_80_60_40": 1.89,
+      "YB_HybridAND_80_60_40": 2.255,
+      "YB_MDD_AND_60_40_20": 2.049,
+      "GB_intraday_opt": 0.048
+    }
+  },
+  {
+    "date": "2023-09-06",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 7.557,
+      "YB_Consensus_80_60_40": 6.499,
+      "YB_HybridAND_80_60_40": 7.117,
+      "YB_MDD_AND_60_40_20": 5.871,
+      "GB_intraday_opt": 2.855
+    }
+  },
+  {
+    "date": "2023-12-05",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 4.238,
+      "YB_Consensus_80_60_40": 3.689,
+      "YB_HybridAND_80_60_40": 4.007,
+      "YB_MDD_AND_60_40_20": 3.634,
+      "GB_intraday_opt": 1.93
+    }
+  },
+  {
+    "date": "2024-03-07",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 5.322,
+      "YB_Consensus_80_60_40": 5.634,
+      "YB_HybridAND_80_60_40": 5.634,
+      "YB_MDD_AND_60_40_20": 5.544,
+      "GB_intraday_opt": 6.915
+    }
+  },
+  {
+    "date": "2024-06-06",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 4.367,
+      "YB_Consensus_80_60_40": 4.67,
+      "YB_HybridAND_80_60_40": 4.67,
+      "YB_MDD_AND_60_40_20": 5.037,
+      "GB_intraday_opt": 9.015
+    }
+  },
+  {
+    "date": "2024-09-06",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 3.012,
+      "YB_Consensus_80_60_40": 3.28,
+      "YB_HybridAND_80_60_40": 3.28,
+      "YB_MDD_AND_60_40_20": 3.59,
+      "GB_intraday_opt": 9.146
+    }
+  },
+  {
+    "date": "2024-12-05",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 3.143,
+      "YB_Consensus_80_60_40": 4.064,
+      "YB_HybridAND_80_60_40": 4.064,
+      "YB_MDD_AND_60_40_20": 3.5,
+      "GB_intraday_opt": 25.08
+    }
+  },
+  {
+    "date": "2025-03-11",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 1.379,
+      "YB_Consensus_80_60_40": 1.926,
+      "YB_HybridAND_80_60_40": 1.926,
+      "YB_MDD_AND_60_40_20": 1.892,
+      "GB_intraday_opt": 7.309
+    }
+  },
+  {
+    "date": "2025-06-10",
+    "active": "GB_intraday_opt",
+    "scores": {
+      "YB_RSI_70_60_50": 1.979,
+      "YB_Consensus_80_60_40": 2.415,
+      "YB_HybridAND_80_60_40": 2.5,
+      "YB_MDD_AND_60_40_20": 2.167,
+      "GB_intraday_opt": 2.686
+    }
+  },
+  {
+    "date": "2025-09-10",
+    "active": "YB_HybridAND_80_60_40",
+    "scores": {
+      "YB_RSI_70_60_50": 1.847,
+      "YB_Consensus_80_60_40": 2.166,
+      "YB_HybridAND_80_60_40": 2.247,
+      "YB_MDD_AND_60_40_20": 1.897,
+      "GB_intraday_opt": 1.259
+    }
+  },
+  {
+    "date": "2025-12-09",
+    "active": "YB_HybridAND_80_60_40",
+    "scores": {
+      "YB_RSI_70_60_50": 8.168,
+      "YB_Consensus_80_60_40": 8.896,
+      "YB_HybridAND_80_60_40": 9.104,
+      "YB_MDD_AND_60_40_20": 8.02,
+      "GB_intraday_opt": 0.64
+    }
+  },
+  {
+    "date": "2026-03-12",
+    "active": "YB_RSI_70_60_50",
+    "scores": {
+      "YB_RSI_70_60_50": 4.98,
+      "YB_Consensus_80_60_40": 4.02,
+      "YB_HybridAND_80_60_40": 4.123,
+      "YB_MDD_AND_60_40_20": 3.921,
+      "GB_intraday_opt": 0.796
+    }
+  }
+]

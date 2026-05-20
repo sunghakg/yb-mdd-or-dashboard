@@ -1,0 +1,464 @@
+{
+  "2018_Q4": {
+    "YB R10+RSI 70/60/50": {
+      "total_return": -0.0765,
+      "cagr": -0.1963,
+      "sharpe": -0.455,
+      "sortino": -0.712,
+      "mdd": -0.1831,
+      "calmar": -1.072,
+      "n_trades": 102,
+      "win_rate": 0.6667,
+      "alpha": 0.6322
+    },
+    "YB Consensus 80/60/40": {
+      "total_return": -0.1037,
+      "cagr": -0.2597,
+      "sharpe": -0.796,
+      "sortino": -1.255,
+      "mdd": -0.1835,
+      "calmar": -1.415,
+      "n_trades": 102,
+      "win_rate": 0.6667,
+      "alpha": 0.5689
+    },
+    "YB Hybrid AND 80/60/40": {
+      "total_return": -0.0871,
+      "cagr": -0.2215,
+      "sharpe": -0.581,
+      "sortino": -0.953,
+      "mdd": -0.1684,
+      "calmar": -1.315,
+      "n_trades": 102,
+      "win_rate": 0.6667,
+      "alpha": 0.6071
+    },
+    "YB MDD 60/40/20 OR": {
+      "total_return": -0.0319,
+      "cagr": -0.0851,
+      "sharpe": -0.475,
+      "sortino": -0.781,
+      "mdd": -0.0753,
+      "calmar": -1.13,
+      "n_trades": 102,
+      "win_rate": 0.6667,
+      "alpha": 0.7435
+    },
+    "YB MDD 60/40/20 AND": {
+      "total_return": -0.0521,
+      "cagr": -0.1366,
+      "sharpe": -0.58,
+      "sortino": -0.96,
+      "mdd": -0.1161,
+      "calmar": -1.176,
+      "n_trades": 102,
+      "win_rate": 0.6667,
+      "alpha": 0.692
+    },
+    "GoldenByungi 분봉 opt": {
+      "total_return": -0.0749,
+      "cagr": -0.1924,
+      "sharpe": -0.626,
+      "sortino": -0.658,
+      "mdd": -0.1485,
+      "calmar": -1.296,
+      "n_trades": 38,
+      "win_rate": 0.4474,
+      "alpha": 0.6361
+    },
+    "SOXL B&H": {
+      "total_return": -0.4738,
+      "cagr": -0.8285,
+      "sharpe": -1.173,
+      "sortino": -1.605,
+      "mdd": -0.6091,
+      "calmar": -1.36,
+      "alpha": 0.0
+    }
+  },
+  "2020_Covid": {
+    "YB R10+RSI 70/60/50": {
+      "total_return": 0.1173,
+      "cagr": 0.315,
+      "sharpe": 0.914,
+      "sortino": 0.99,
+      "mdd": -0.2565,
+      "calmar": 1.228,
+      "n_trades": 91,
+      "win_rate": 0.7363,
+      "alpha": 1.1072
+    },
+    "YB Consensus 80/60/40": {
+      "total_return": 0.0564,
+      "cagr": 0.1449,
+      "sharpe": 0.534,
+      "sortino": 0.521,
+      "mdd": -0.3169,
+      "calmar": 0.457,
+      "n_trades": 91,
+      "win_rate": 0.7363,
+      "alpha": 0.9371
+    },
+    "YB Hybrid AND 80/60/40": {
+      "total_return": 0.1273,
+      "cagr": 0.3441,
+      "sharpe": 0.927,
+      "sortino": 0.923,
+      "mdd": -0.271,
+      "calmar": 1.27,
+      "n_trades": 91,
+      "win_rate": 0.7363,
+      "alpha": 1.1363
+    },
+    "YB MDD 60/40/20 OR": {
+      "total_return": 0.1401,
+      "cagr": 0.382,
+      "sharpe": 1.377,
+      "sortino": 1.598,
+      "mdd": -0.1836,
+      "calmar": 2.08,
+      "n_trades": 91,
+      "win_rate": 0.7363,
+      "alpha": 1.1742
+    },
+    "YB MDD 60/40/20 AND": {
+      "total_return": 0.1094,
+      "cagr": 0.2921,
+      "sharpe": 1.041,
+      "sortino": 1.096,
+      "mdd": -0.2095,
+      "calmar": 1.394,
+      "n_trades": 91,
+      "win_rate": 0.7363,
+      "alpha": 1.0843
+    },
+    "GoldenByungi 분봉 opt": {
+      "total_return": 0.0368,
+      "cagr": 0.0933,
+      "sharpe": 0.426,
+      "sortino": 0.338,
+      "mdd": -0.2447,
+      "calmar": 0.381,
+      "n_trades": 28,
+      "win_rate": 0.6429,
+      "alpha": 0.8856
+    },
+    "SOXL B&H": {
+      "total_return": -0.471,
+      "cagr": -0.7922,
+      "sharpe": 0.097,
+      "sortino": 0.139,
+      "mdd": -0.8039,
+      "calmar": -0.986,
+      "alpha": 0.0
+    }
+  },
+  "2022_full": {
+    "YB R10+RSI 70/60/50": {
+      "total_return": 0.2268,
+      "cagr": 0.2297,
+      "sharpe": 0.705,
+      "sortino": 1.135,
+      "mdd": -0.2603,
+      "calmar": 0.883,
+      "n_trades": 320,
+      "win_rate": 0.7125,
+      "alpha": 1.0985
+    },
+    "YB Consensus 80/60/40": {
+      "total_return": 0.0452,
+      "cagr": 0.0458,
+      "sharpe": 0.307,
+      "sortino": 0.423,
+      "mdd": -0.2968,
+      "calmar": 0.154,
+      "n_trades": 320,
+      "win_rate": 0.7125,
+      "alpha": 0.9146
+    },
+    "YB Hybrid AND 80/60/40": {
+      "total_return": 0.0849,
+      "cagr": 0.086,
+      "sharpe": 0.406,
+      "sortino": 0.574,
+      "mdd": -0.3179,
+      "calmar": 0.27,
+      "n_trades": 320,
+      "win_rate": 0.7125,
+      "alpha": 0.9547
+    },
+    "YB MDD 60/40/20 OR": {
+      "total_return": 0.275,
+      "cagr": 0.2787,
+      "sharpe": 1.158,
+      "sortino": 1.729,
+      "mdd": -0.1266,
+      "calmar": 2.202,
+      "n_trades": 320,
+      "win_rate": 0.7125,
+      "alpha": 1.1475
+    },
+    "YB MDD 60/40/20 AND": {
+      "total_return": 0.1099,
+      "cagr": 0.1113,
+      "sharpe": 0.539,
+      "sortino": 0.732,
+      "mdd": -0.2217,
+      "calmar": 0.502,
+      "n_trades": 320,
+      "win_rate": 0.7125,
+      "alpha": 0.9801
+    },
+    "GoldenByungi 분봉 opt": {
+      "total_return": -0.1336,
+      "cagr": -0.135,
+      "sharpe": -0.329,
+      "sortino": -0.353,
+      "mdd": -0.2829,
+      "calmar": -0.477,
+      "n_trades": 70,
+      "win_rate": 0.4571,
+      "alpha": 0.7337
+    },
+    "SOXL B&H": {
+      "total_return": -0.8656,
+      "cagr": -0.8688,
+      "sharpe": -0.871,
+      "sortino": -1.577,
+      "mdd": -0.9041,
+      "calmar": -0.961,
+      "alpha": 0.0
+    }
+  },
+  "Train_2018-06_2022-12": {
+    "YB R10+RSI 70/60/50": {
+      "total_return": 4.1606,
+      "cagr": 0.4318,
+      "sharpe": 1.221,
+      "sortino": 1.588,
+      "mdd": -0.2603,
+      "calmar": 1.659,
+      "n_trades": 1211,
+      "win_rate": 0.711,
+      "alpha": 0.4784
+    },
+    "YB Consensus 80/60/40": {
+      "total_return": 4.4384,
+      "cagr": 0.4483,
+      "sharpe": 1.195,
+      "sortino": 1.475,
+      "mdd": -0.3169,
+      "calmar": 1.415,
+      "n_trades": 1211,
+      "win_rate": 0.711,
+      "alpha": 0.4949
+    },
+    "YB Hybrid AND 80/60/40": {
+      "total_return": 5.1353,
+      "cagr": 0.487,
+      "sharpe": 1.256,
+      "sortino": 1.575,
+      "mdd": -0.3179,
+      "calmar": 1.532,
+      "n_trades": 1211,
+      "win_rate": 0.711,
+      "alpha": 0.5336
+    },
+    "YB MDD 60/40/20 OR": {
+      "total_return": 5.0101,
+      "cagr": 0.4803,
+      "sharpe": 1.706,
+      "sortino": 2.259,
+      "mdd": -0.1836,
+      "calmar": 2.616,
+      "n_trades": 1211,
+      "win_rate": 0.711,
+      "alpha": 0.5269
+    },
+    "YB MDD 60/40/20 AND": {
+      "total_return": 3.2919,
+      "cagr": 0.3752,
+      "sharpe": 1.336,
+      "sortino": 1.696,
+      "mdd": -0.2217,
+      "calmar": 1.692,
+      "n_trades": 1211,
+      "win_rate": 0.711,
+      "alpha": 0.4218
+    },
+    "GoldenByungi 분봉 opt": {
+      "total_return": 3.1959,
+      "cagr": 0.3684,
+      "sharpe": 0.967,
+      "sortino": 1.033,
+      "mdd": -0.322,
+      "calmar": 1.144,
+      "n_trades": 484,
+      "win_rate": 0.5558,
+      "alpha": 0.415
+    },
+    "SOXL B&H": {
+      "total_return": -0.196,
+      "cagr": -0.0466,
+      "sharpe": 0.504,
+      "sortino": 0.717,
+      "mdd": -0.9053,
+      "calmar": -0.051,
+      "alpha": 0.0
+    }
+  },
+  "Test_2023-01_2026-05": {
+    "YB R10+RSI 70/60/50": {
+      "total_return": 5.048,
+      "cagr": 0.708,
+      "sharpe": 1.571,
+      "sortino": 2.424,
+      "mdd": -0.2284,
+      "calmar": 3.1,
+      "n_trades": 909,
+      "win_rate": 0.681,
+      "alpha": -0.6373
+    },
+    "YB Consensus 80/60/40": {
+      "total_return": 7.5314,
+      "cagr": 0.892,
+      "sharpe": 1.663,
+      "sortino": 2.445,
+      "mdd": -0.2758,
+      "calmar": 3.235,
+      "n_trades": 909,
+      "win_rate": 0.681,
+      "alpha": -0.4533
+    },
+    "YB Hybrid AND 80/60/40": {
+      "total_return": 7.6109,
+      "cagr": 0.8972,
+      "sharpe": 1.667,
+      "sortino": 2.452,
+      "mdd": -0.2824,
+      "calmar": 3.177,
+      "n_trades": 909,
+      "win_rate": 0.681,
+      "alpha": -0.4481
+    },
+    "YB MDD 60/40/20 OR": {
+      "total_return": 3.6471,
+      "cagr": 0.5792,
+      "sharpe": 1.673,
+      "sortino": 2.468,
+      "mdd": -0.2074,
+      "calmar": 2.793,
+      "n_trades": 909,
+      "win_rate": 0.681,
+      "alpha": -0.7661
+    },
+    "YB MDD 60/40/20 AND": {
+      "total_return": 3.9721,
+      "cagr": 0.6113,
+      "sharpe": 1.629,
+      "sortino": 2.44,
+      "mdd": -0.2003,
+      "calmar": 3.052,
+      "n_trades": 909,
+      "win_rate": 0.681,
+      "alpha": -0.734
+    },
+    "GoldenByungi 분봉 opt": {
+      "total_return": 7.9915,
+      "cagr": 0.9218,
+      "sharpe": 1.734,
+      "sortino": 2.348,
+      "mdd": -0.2658,
+      "calmar": 3.467,
+      "n_trades": 363,
+      "win_rate": 0.5592,
+      "alpha": -0.4235
+    },
+    "SOXL B&H": {
+      "total_return": 16.5647,
+      "cagr": 1.3453,
+      "sharpe": 1.337,
+      "sortino": 1.954,
+      "mdd": -0.88,
+      "calmar": 1.529,
+      "alpha": 0.0
+    }
+  },
+  "Full_8yr": {
+    "YB R10+RSI 70/60/50": {
+      "total_return": 30.9743,
+      "cagr": 0.5467,
+      "sharpe": 1.386,
+      "sortino": 1.946,
+      "mdd": -0.2603,
+      "calmar": 2.1,
+      "n_trades": 2118,
+      "win_rate": 0.6983,
+      "alpha": 0.1573
+    },
+    "YB Consensus 80/60/40": {
+      "total_return": 46.4139,
+      "cagr": 0.6253,
+      "sharpe": 1.415,
+      "sortino": 1.896,
+      "mdd": -0.3169,
+      "calmar": 1.973,
+      "n_trades": 2118,
+      "win_rate": 0.6983,
+      "alpha": 0.2359
+    },
+    "YB Hybrid AND 80/60/40": {
+      "total_return": 52.9883,
+      "cagr": 0.6521,
+      "sharpe": 1.449,
+      "sortino": 1.956,
+      "mdd": -0.3179,
+      "calmar": 2.051,
+      "n_trades": 2118,
+      "win_rate": 0.6983,
+      "alpha": 0.2627
+    },
+    "YB MDD 60/40/20 OR": {
+      "total_return": 27.399,
+      "cagr": 0.5238,
+      "sharpe": 1.69,
+      "sortino": 2.349,
+      "mdd": -0.2074,
+      "calmar": 2.525,
+      "n_trades": 2118,
+      "win_rate": 0.6983,
+      "alpha": 0.1343
+    },
+    "YB MDD 60/40/20 AND": {
+      "total_return": 20.6987,
+      "cagr": 0.473,
+      "sharpe": 1.474,
+      "sortino": 2.02,
+      "mdd": -0.2217,
+      "calmar": 2.133,
+      "n_trades": 2118,
+      "win_rate": 0.6983,
+      "alpha": 0.0836
+    },
+    "GoldenByungi 분봉 opt": {
+      "total_return": 36.3351,
+      "cagr": 0.5771,
+      "sharpe": 1.295,
+      "sortino": 1.519,
+      "mdd": -0.322,
+      "calmar": 1.792,
+      "n_trades": 848,
+      "win_rate": 0.5566,
+      "alpha": 0.1877
+    },
+    "SOXL B&H": {
+      "total_return": 12.6404,
+      "cagr": 0.3894,
+      "sharpe": 0.848,
+      "sortino": 1.219,
+      "mdd": -0.9053,
+      "calmar": 0.43,
+      "alpha": 0.0
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "SOXL": {
+    "longbyungi_opt": {
+      "total_return": 25.6034,
+      "cagr": 0.7614,
+      "sharpe": 1.351,
+      "sortino": 1.457,
+      "mdd": -0.9507,
+      "calmar": 0.801,
+      "n_trades": 980,
+      "win_rate": 0.5602,
+      "alpha": 0.7873
+    },
+    "goldenbyungi_opt": {
+      "total_return": 24.8397,
+      "cagr": 0.7525,
+      "sharpe": 1.534,
+      "sortino": 1.795,
+      "mdd": -0.2421,
+      "calmar": 3.108,
+      "n_trades": 602,
+      "win_rate": 0.5664,
+      "alpha": 0.7784
+    },
+    "bnh": {
+      "total_return": -0.1411,
+      "cagr": -0.0259,
+      "sharpe": 0.755,
+      "sortino": 0.951,
+      "mdd": -0.99,
+      "calmar": -0.026,
+      "alpha": 0.0
+    },
+    "yangbyungi_R10_regime": {
+      "total_return": 26.578,
+      "cagr": 0.7723,
+      "sharpe": 1.769,
+      "sortino": 2.464,
+      "mdd": -0.2333,
+      "calmar": 3.31,
+      "n_trades": 1446,
+      "win_rate": 0.7068,
+      "alpha": 0.7982
+    }
+  },
+  "TQQQ": {
+    "longbyungi_opt": {
+      "total_return": -0.0699,
+      "cagr": -0.0124,
+      "sharpe": 0.291,
+      "sortino": 0.264,
+      "mdd": -0.7018,
+      "calmar": -0.018,
+      "n_trades": 801,
+      "win_rate": 0.5556,
+      "alpha": 0.0453
+    },
+    "goldenbyungi_opt": {
+      "total_return": 1.3243,
+      "cagr": 0.1566,
+      "sharpe": 0.612,
+      "sortino": 0.473,
+      "mdd": -0.6055,
+      "calmar": 0.259,
+      "n_trades": 784,
+      "win_rate": 0.5651,
+      "alpha": 0.2144
+    },
+    "bnh": {
+      "total_return": -0.2915,
+      "cagr": -0.0577,
+      "sharpe": 0.363,
+      "sortino": 0.394,
+      "mdd": -0.9188,
+      "calmar": -0.063,
+      "alpha": 0.0
+    },
+    "yangbyungi_R10_regime": {
+      "total_return": 0.1139,
+      "cagr": 0.0188,
+      "sharpe": 0.217,
+      "sortino": 0.189,
+      "mdd": -0.4591,
+      "calmar": 0.041,
+      "n_trades": 1327,
+      "win_rate": 0.6948,
+      "alpha": 0.0765
+    }
+  },
+  "TECL": {
+    "longbyungi_opt": {
+      "total_return": -0.1089,
+      "cagr": -0.0197,
+      "sharpe": 0.557,
+      "sortino": 0.468,
+      "mdd": -0.9457,
+      "calmar": -0.021,
+      "n_trades": 733,
+      "win_rate": 0.5252,
+      "alpha": 0.0104
+    },
+    "goldenbyungi_opt": {
+      "total_return": 0.3593,
+      "cagr": 0.0544,
+      "sharpe": 0.408,
+      "sortino": 0.328,
+      "mdd": -0.7323,
+      "calmar": 0.074,
+      "n_trades": 696,
+      "win_rate": 0.5345,
+      "alpha": 0.0845
+    },
+    "bnh": {
+      "total_return": -0.1625,
+      "cagr": -0.0301,
+      "sharpe": 0.592,
+      "sortino": 0.661,
+      "mdd": -0.9588,
+      "calmar": -0.031,
+      "alpha": 0.0
+    },
+    "yangbyungi_R10_regime": {
+      "total_return": 1.0757,
+      "cagr": 0.1344,
+      "sharpe": 0.63,
+      "sortino": 0.625,
+      "mdd": -0.3698,
+      "calmar": 0.363,
+      "n_trades": 1142,
+      "win_rate": 0.6769,
+      "alpha": 0.1599
+    }
+  }
+}
