@@ -77,8 +77,7 @@ col4.metric("P(MDD<-40%)", "0.5%", "5,000 paths 중")
 st.markdown("---")
 
 tabs = st.tabs(["📊 Overview", "📋 거래 내역", "📈 Stress Tests", "🎲 Bootstrap",
-                "📅 Year-by-Year", "🔄 Walk-Forward / OOS", "📜 Paper Trading",
-                "💰 Alpaca Live"])
+                "📅 Year-by-Year", "🔄 Walk-Forward / OOS", "💰 Alpaca Live"])
 
 # ───────────────────────────────────────────────────────────
 # TAB 1: Overview
@@ -727,83 +726,11 @@ with tabs[5]:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         st.markdown("**해석**: YB MDD OR의 Δ Calmar가 가장 작아 과적합 가장 약함.")
 
+
 # ───────────────────────────────────────────────────────────
-# TAB 7: Paper Trading
+# TAB 7: Alpaca Live (real paper account)
 # ───────────────────────────────────────────────────────────
 with tabs[6]:
-    st.subheader("📜 YB MDD OR 페이퍼 트레이딩 — Live Journal")
-    j_path = ROOT / "yb_mdd_or_journal.json"
-    j = load_json(j_path)
-
-    if j is None:
-        st.warning("⚠️ 페이퍼 저널 없음")
-        st.markdown("**시작 방법**:")
-        st.code("python yb_mdd_or_paper.py --reset --seed 10000 --start-date 2024-01-02", language="bash")
-    else:
-        # KPIs
-        cash = j.get("cash", 0)
-        seed = j.get("seed_capital", 0)
-        de = j.get("daily_equity", [])
-        equity = de[-1].get("equity") if de else cash
-        pnl = equity - seed
-        pnl_pct = pnl / seed * 100 if seed > 0 else 0
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Equity", f"${equity:,.2f}", f"{pnl:+,.2f} ({pnl_pct:+.2f}%)")
-        c2.metric("Cash", f"${cash:,.2f}")
-        c3.metric("Seed", f"${seed:,.2f}")
-        c4.metric("Last processed", j.get("last_processed_date") or "—")
-
-        # Open positions
-        st.markdown("### Open carry positions")
-        carry = j.get("carry_positions", [])
-        if carry:
-            cdf = pd.DataFrame(carry)
-            st.dataframe(cdf, use_container_width=True, hide_index=True)
-        else:
-            st.info("보유 포지션 없음")
-
-        # Equity curve
-        if len(de) > 1:
-            st.markdown("### Equity Curve")
-            eq_df = pd.DataFrame(de)
-            eq_df["date"] = pd.to_datetime(eq_df["date"])
-            eq_df = eq_df.set_index("date")
-            st.line_chart(eq_df[["equity"]])
-
-        # Next orders
-        st.markdown("### 📋 내일 주문표")
-        no = j.get("next_orders")
-        if no:
-            st.json(no)
-        else:
-            st.info("주문표 없음. 다음 영업일에 자동 생성.")
-
-        # Recent trades
-        tl = j.get("trade_log", [])
-        if tl:
-            st.markdown("### 최근 trades (last 10)")
-            tdf = pd.DataFrame(tl[-10:])
-            st.dataframe(tdf, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-    st.markdown("### 운영 명령어")
-    st.code("""
-# 초기화 (한 번만)
-python yb_mdd_or_paper.py --reset --seed 10000 --start-date 2024-01-02
-
-# 매일 1회 실행 (장 마감 후)
-python yb_mdd_or_paper.py
-
-# 상태만 보기
-python yb_mdd_or_paper.py --status
-""", language="bash")
-
-
-# ───────────────────────────────────────────────────────────
-# TAB 8: Alpaca Live (real paper account)
-# ───────────────────────────────────────────────────────────
-with tabs[7]:
     st.subheader("💰 Alpaca Paper Account — 실시간")
     st.caption("GitHub Actions가 자동 운영하는 진짜 Alpaca paper 계좌 상태. 우리 자체 시뮬과 별개.")
 
