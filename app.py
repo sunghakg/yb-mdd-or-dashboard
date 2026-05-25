@@ -1,17 +1,18 @@
 """
-YB MDD OR — Streamlit 대시보드
-==================================
-백테스트 결과 + 신뢰구간 + 페이퍼 트레이딩 운영 패널 통합.
+Unified Trader — Streamlit 대시보드 (Tier 2 GOLD_ESCAPE bm=90)
+===============================================================
+백테스트 결과 + 신뢰구간 + Alpaca paper 통합 봇 실시간 모니터링.
 
-실행: streamlit run yb_mdd_or_dashboard.py
+2026-05-24 통합: 기존 YB MDD OR + Rotation P5.5 두 봇 → unified_trader.py 하나.
 
 탭 구성:
-1. 📊 Overview — 8년 종합 + 최종 spec
-2. 📈 Stress Tests — 5+2 폭락 사이클
-3. 🎲 Bootstrap — 5,000 paths 신뢰구간
-4. 📅 Year-by-Year — 연도별 + 16년 long-horizon
-5. 🔄 Walk-Forward + OOS — 동적 vs 정적
-6. 📜 Paper Trading — 실시간 journal 모니터링
+1. 📊 Overview — 매매법 spec
+2. 📋 거래 내역 — 8년 분봉 백테 거래 로그
+3. 📈 Stress Tests — 5+2 폭락 사이클
+4. 🎲 Bootstrap — 5,000 paths 신뢰구간
+5. 📅 Year-by-Year — 16년 long-horizon
+6. 🔄 Walk-Forward / OOS — 동적 vs 정적
+7. 💰 Unified Live — Alpaca paper 실시간 + regime + active sub-strategy
 """
 from __future__ import annotations
 import json
@@ -26,14 +27,12 @@ ROOT = Path(__file__).parent / "data"
 st.set_page_config(page_title="YB MDD OR Dashboard", layout="wide", page_icon="🚽")
 
 # Alpaca credentials from Streamlit secrets (cloud) or env (local)
+# Unified trader: ALPACA_API_KEY / ALPACA_SECRET_KEY (2026-05-24 통합 후 새 paper 계정)
 import os as _os
 try:
     if "ALPACA_API_KEY" in st.secrets:
         _os.environ["ALPACA_API_KEY"] = st.secrets["ALPACA_API_KEY"]
         _os.environ["ALPACA_SECRET_KEY"] = st.secrets["ALPACA_SECRET_KEY"]
-    if "ALPACA_ROT_API_KEY" in st.secrets:
-        _os.environ["ALPACA_ROT_API_KEY"] = st.secrets["ALPACA_ROT_API_KEY"]
-        _os.environ["ALPACA_ROT_SECRET_KEY"] = st.secrets["ALPACA_ROT_SECRET_KEY"]
 except Exception:
     pass
 
@@ -65,23 +64,23 @@ def fmt(x, places=2):
 # ───────────────────────────────────────────────────────────
 st.markdown("""
 <div style="background:linear-gradient(135deg,#1a2540,#2c3e50);padding:24px 32px;border-radius:12px;color:white;margin-bottom:16px">
-  <h1 style="margin:0;font-size:1.8em">🚽 YB MDD 60/40/20 OR</h1>
-  <div style="opacity:0.85;margin-top:6px">양변기 v5 + Consensus 2-of-3 + Hybrid fast BEAR override</div>
+  <h1 style="margin:0;font-size:1.8em">🚽 Unified Trader — T2 GOLD_ESCAPE bm=90</h1>
+  <div style="opacity:0.85;margin-top:6px">롱변기 (BULL/NEUTRAL) + 양변기 v5 F1_A6 (BEAR) + 황금변기 (BEAR streak &gt; 90d escape)</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Quick stats row
+# Quick stats row — V_bear_cap_comprehensive V1-V9 (2026-05-23) 검증 결과
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Bootstrap CAGR median", "+53.7%", "[+32, +78] 95% CI")
-col2.metric("MDD median", "-22.7%", "[-35, -16] 95% CI")
-col3.metric("Calmar median", "2.34", "[1.10, 4.37] 95% CI")
-col4.metric("P(MDD<-40%)", "0.5%", "5,000 paths 중")
+col1.metric("8년 Calmar", "6.52", "vs baseline 6.46")
+col2.metric("닷컴 31m OOS", "+66.9%", "vs baseline +57.1%")
+col3.metric("Longest UW", "156d", "−90d (246→156)")
+col4.metric("V7 random p", "0.0000", "300 trials 한 번도 안 짐")
 
 st.markdown("---")
 
 tabs = st.tabs(["📊 Overview", "📋 거래 내역", "📈 Stress Tests", "🎲 Bootstrap",
                 "📅 Year-by-Year", "🔄 Walk-Forward / OOS",
-                "💰 YB Live", "🏆 Rotation (P5.5)"])
+                "💰 Unified Live"])
 
 # ───────────────────────────────────────────────────────────
 # TAB 1: Overview
@@ -732,15 +731,137 @@ with tabs[5]:
 
 
 # ───────────────────────────────────────────────────────────
-# TAB 7: Alpaca Live (real paper account)
+# TAB 7: Unified Live (Tier 2 GOLD_ESCAPE bm=90)
 # ───────────────────────────────────────────────────────────
 with tabs[6]:
-    st.subheader("💰 Alpaca Paper Account — YB MDD OR (양변기 60/40/20)")
-    st.caption("GitHub Actions가 자동 운영하는 YB MDD OR 페이퍼 계좌. 1년째 무중단 운영.")
+    st.subheader("💰 Unified Trader — Alpaca Paper (T2 GOLD_ESCAPE bm=90)")
+    st.caption("2026-05-24 통합 봇. GitHub Actions × cron-job.org 자동 운영. 04:00 HST 데이터 60초 캐시.")
 
-    # Credentials are set globally at top via secrets / env
+    # ── Section A: Spec card ──
+    st.markdown("""
+<div style="background:linear-gradient(135deg,#0d3b2e,#1e6b4f);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
+  <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">📐 Tier 2 GOLD_ESCAPE Mapping</div>
+  <div style="opacity:0.92;line-height:1.7">
+    <b>BULL / NEUTRAL</b> → 롱변기 (SOXL 100%, +1.5% stop-buy, -8% close-based stop)<br>
+    <b>BEAR</b> → 양변기 v5 F1_A6 (SOXL+SOXS pair, win 0% / loss 25% LOC, QQQ RSI per long_alloc)<br>
+    <b>GOLD_ESCAPE</b> (BEAR streak &gt; <b>90d</b>) → 황금변기 (SOXL K-vol breakout 0.25, RSI mode 30/70/100%)<br>
+    <b>Regime</b>: Consensus 3-SMA200 (QQQ/SPY/SMH ±2%, 2-of-3) + Fast BEAR OR (VIX9D/VIX&gt;1.05 OR SOXL 5d mom&lt;-10%), dwell=5d
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    @st.cache_data(ttl=60)  # cache 60s to avoid hammering API
+    # ── Section B: Today's regime + active sub-strategy ──
+    @st.cache_data(ttl=300)  # 5분 캐시 (yfinance 다수 호출)
+    def _compute_regime_state():
+        """unified_trader.py와 동일 로직: consensus + fast OR + dwell 5 + bear_max 90."""
+        try:
+            import yfinance as yf
+            import datetime as _dt
+            CONSENSUS = ["QQQ", "SPY", "SMH"]
+            SMA = 200; THR = 0.02; MIN_AGREE = 2
+            VIX_THR = 1.05; MOM_THR = -0.10
+            DWELL = 5; MAX_BEAR = 90
+
+            end = _dt.date.today() + _dt.timedelta(days=1)
+            start = end - _dt.timedelta(days=600)
+
+            sma_ratios = {}
+            for a in CONSENSUS:
+                df = yf.download(a, start=start, end=end, progress=False, auto_adjust=False)
+                if hasattr(df.columns, "get_level_values"):
+                    df.columns = df.columns.get_level_values(0)
+                close = df["Close"]
+                sma = close.rolling(SMA).mean()
+                sma_ratios[a] = (close / sma).shift(1)
+
+            vix = yf.download("^VIX", start=start, end=end, progress=False, auto_adjust=False)
+            if hasattr(vix.columns, "get_level_values"):
+                vix.columns = vix.columns.get_level_values(0)
+            vix9d = yf.download("^VIX9D", start=start, end=end, progress=False, auto_adjust=False)
+            if hasattr(vix9d.columns, "get_level_values"):
+                vix9d.columns = vix9d.columns.get_level_values(0)
+            soxl = yf.download("SOXL", start=start, end=end, progress=False, auto_adjust=False)
+            if hasattr(soxl.columns, "get_level_values"):
+                soxl.columns = soxl.columns.get_level_values(0)
+
+            common = sma_ratios[CONSENSUS[0]].dropna().index
+            for a in CONSENSUS[1:]:
+                common = common.intersection(sma_ratios[a].dropna().index)
+            common = common[-250:]
+
+            regimes = []
+            for d in common:
+                bull = bear = 0
+                for a in CONSENSUS:
+                    r = float(sma_ratios[a].loc[d])
+                    if r > 1 + THR: bull += 1
+                    elif r < 1 - THR: bear += 1
+                if bear >= MIN_AGREE: base = "BEAR"
+                elif bull >= MIN_AGREE: base = "BULL"
+                else: base = "NEUTRAL"
+                try:
+                    pidx = vix.index[vix.index < d]
+                    if len(pidx) > 0:
+                        if float(vix9d.loc[pidx[-1], "Close"]) / float(vix.loc[pidx[-1], "Close"]) > VIX_THR:
+                            base = "BEAR"
+                except Exception: pass
+                try:
+                    pidx = soxl.index[soxl.index < d]
+                    if len(pidx) >= 6:
+                        if float(soxl.loc[pidx[-1], "Close"]) / float(soxl.loc[pidx[-6], "Close"]) - 1 < MOM_THR:
+                            base = "BEAR"
+                except Exception: pass
+                regimes.append(base)
+
+            # Smooth runs < DWELL
+            s = list(regimes); i = 0; n = len(s)
+            while i < n:
+                j = i
+                while j < n and s[j] == s[i]: j += 1
+                if (j - i) < DWELL and i > 0:
+                    for k in range(i, j): s[k] = s[i-1]
+                i = j
+            today_reg = s[-1]
+            streak = 0
+            for r in reversed(s):
+                if r == "BEAR": streak += 1
+                else: break
+            gold_escape = today_reg == "BEAR" and streak > MAX_BEAR
+            active = {"BULL":"longbyungi","NEUTRAL":"longbyungi","BEAR":"yangbyungi"}[today_reg]
+            if gold_escape:
+                active = "goldenbyungi"
+            recent = "".join(r[0] for r in s[-7:])
+            return {
+                "regime": today_reg,
+                "raw_regime": regimes[-1],
+                "active": active,
+                "bear_streak": streak,
+                "max_bear": MAX_BEAR,
+                "gold_escape": gold_escape,
+                "last7": recent,
+                "dwell": DWELL,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    rstate = _compute_regime_state()
+    if "error" in rstate:
+        st.warning(f"Regime 계산 실패: {rstate['error']}")
+    else:
+        active_emoji = {"longbyungi":"🚀", "yangbyungi":"🚽", "goldenbyungi":"✨"}.get(rstate["active"], "❓")
+        active_name = {"longbyungi":"롱변기", "yangbyungi":"양변기 F1_A6", "goldenbyungi":"황금변기 (GOLD_ESCAPE!)"}.get(rstate["active"], rstate["active"])
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Today Regime", rstate["regime"], f"raw {rstate['raw_regime']}")
+        c2.metric("Active Sub-Strategy", f"{active_emoji} {active_name}")
+        c3.metric("BEAR streak", f"{rstate['bear_streak']}d", f"max {rstate['max_bear']}d")
+        c4.metric("Last 7d", rstate["last7"], f"dwell {rstate['dwell']}d")
+        if rstate["gold_escape"]:
+            st.error("🚨 **GOLD_ESCAPE 발동 중** — BEAR streak > 90d. 황금변기 K-vol breakout으로 전환됨.")
+
+    st.markdown("---")
+
+    # ── Section C: Alpaca paper account live ──
+    @st.cache_data(ttl=60)
     def _fetch_alpaca():
         try:
             from alpaca.trading.client import TradingClient
@@ -795,9 +916,14 @@ with tabs[6]:
     data = _fetch_alpaca()
     if "error" in data:
         st.error(f"Alpaca 연결 실패: {data['error']}")
+        st.caption("Streamlit Cloud → ⚙ Settings → Secrets에 다음 2줄 등록 (2026-05-24 신규 unified paper 계정):")
+        st.code('ALPACA_API_KEY = "<신규 unified paper PK key>"\n'
+                'ALPACA_SECRET_KEY = "<신규 unified paper secret>"',
+                language="toml")
+        st.caption("실제 key는 GitHub repo sunghakg/yb-mdd-or-trader → Settings → Secrets에 등록된 값 그대로 사용.")
     else:
         acc = data["account"]
-        seed = 100_000.0
+        seed = 100_000.0   # Alpaca paper 기본 시드
         pnl = acc["equity"] - seed
         pnl_pct = (pnl / seed) * 100
 
@@ -817,7 +943,7 @@ with tabs[6]:
             pos_df["unrealized_pct"] = pos_df["unrealized_pct"].apply(lambda x: f"{x:+.2f}%")
             st.dataframe(pos_df, use_container_width=True, hide_index=True)
         else:
-            st.info("보유 포지션 없음")
+            st.info("보유 포지션 없음 (regime 판정 후 진입 대기 또는 갭/필터 차단)")
 
         st.markdown("### 오늘 주문")
         if data["orders_today"]:
@@ -827,202 +953,9 @@ with tabs[6]:
             st.info("오늘 주문 없음")
 
     st.markdown("---")
-    st.markdown("**🔗 Alpaca 페이퍼 대시보드 직접**: https://app.alpaca.markets/paper/dashboard/overview")
-    st.markdown("**🔗 GitHub Actions 로그**: https://github.com/sunghakg/yb-mdd-or-trader/actions")
-    st.caption("실시간 알림은 텔레그램 봇 참고. Alpaca API 직접 호출은 60초 캐시.")
+    st.markdown("**🔗 Alpaca 신규 unified paper 계정**: https://app.alpaca.markets/paper/dashboard/overview")
+    st.markdown("**🔗 GitHub Actions (unified workflows)**: https://github.com/sunghakg/yb-mdd-or-trader/actions")
+    st.markdown("**🔗 cron-job.org (4 트리거)**: https://console.cron-job.org/jobs")
+    st.caption("자동 트리거: 03:25 / 03:35 / 09:55 / 10:00 HST (월-금). Telegram prefix: 🚽 UNIFIED")
 
 
-# ───────────────────────────────────────────────────────────
-# Tab 7 — 🏆 Rotation Multi-Strategy (P5.5 Champion)
-# ───────────────────────────────────────────────────────────
-with tabs[7]:
-    st.subheader("🏆 Regime Rotation Multi-Strategy — P5.5 Champion")
-    st.caption("8년 IBKR 5분봉 검증 통과 (2026-05-21). aggressive mapping + consensus 3-SMA + fast_OR + dwell 5.")
-
-    # ── Section 1: Spec card ──
-    st.markdown("""
-<div style="background:linear-gradient(135deg,#0d3b2e,#1e6b4f);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
-  <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">📐 P5.5 챔피언 Spec</div>
-  <div style="opacity:0.92;line-height:1.7">
-    <b>Mapping (aggressive)</b>: BULL → 롱변기 (SOXL 100%) / NEUTRAL → 롱변기 / BEAR → 양변기 (SOXL+SOXS)<br>
-    <b>Regime</b>: Consensus 3-SMA200 (QQQ/SPY/SMH ±2%, 2-of-3) + Fast OR override (VIX9D/VIX>1.05 OR SOXL 5d mom<-10%)<br>
-    <b>Dwell</b>: 5일 (regime 전환 최소 유지)<br>
-    <b>롱변기</b>: 시가 +1.5% stop-buy / 100% alloc / -8% stop-loss (EOD enforce)<br>
-    <b>양변기</b>: F1_A6 asymmetric LOC (win 0% carry / loss 25% cut), gap ±5%
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-    # ── Section 2: Headline metrics ──
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("8yr CAGR", "+186.2%", "vs B&H +40.2%")
-    col2.metric("8yr MDD", "-29.1%", "vs B&H -90.5%")
-    col3.metric("Calmar", "6.40", "vs YB MDD OR 3.31")
-    col4.metric("Sharpe", "2.18", "OOS > IS (3 folds)")
-
-    st.markdown("---")
-
-    # ── Section 3: Comparison vs YB MDD OR ──
-    st.markdown("### 📊 YB MDD OR (현재 운영) vs P5.5 챔피언 (신규)")
-    cmp_df = pd.DataFrame([
-        ["8년 CAGR",                    "+77.2%",   "+186.2%",  "🟢 +109%p"],
-        ["MDD (최대 낙폭)",            "-23.3%",   "-29.1%",   "🟡 -5.8%p"],
-        ["Sharpe",                      "1.77",     "2.18",     "🟢 +0.41"],
-        ["Calmar",                      "3.31",     "6.40",     "🟢 +3.09"],
-        ["Bootstrap P(MDD<-40%)",      "0.5%",     "29.2%",    "🟡 +28.7%p"],
-        ["Bootstrap P(Calmar>3)",      "—",        "91.4%",    "🟢 (검증 통과)"],
-        ["OOS Calmar (50/50)",         "IS 우위",  "7.89",     "🟢 OOS > IS"],
-        ["OOS Calmar (70/30)",         "—",        "11.47",    "🟢 OOS >> IS"],
-        ["Crisis 2020 Covid",          "-0.3%",    "+13.3%",   "🟢 +13.6%p"],
-        ["Crisis 2022 fully",          "+21.5%",   "+18.5%",   "🟡 -3.0%p"],
-        ["Crisis 2025 tariff",         "-7.1%",    "-7.1%",    "🟰 동일"],
-    ], columns=["지표", "YB MDD OR (양변기)", "P5.5 챔피언 (rotation)", "차이"])
-    st.dataframe(cmp_df, use_container_width=True, hide_index=True)
-
-    st.info(
-        "**핵심 트레이드오프** — 수익 2.4배 / Calmar 1.9배 / **꼬리위험은 양보** "
-        "(P(MDD<-40%) 0.5% → 29.2%). 안정성 우선이면 YB MDD OR, 위험조정 수익 추구이면 P5.5."
-    )
-
-    st.markdown("---")
-
-    # ── Section 4: Full grid table (from regime_rotation backtest) ──
-    st.markdown("### 🎯 17개 전략 백테스트 결과 (8년)")
-    rot_data = load_json(ROOT / "regime_rotation" / "summary.json")
-    if rot_data:
-        rows = []
-        for k, v in rot_data.items():
-            rows.append({
-                "전략": k,
-                "Total Return": f"{v['total_return']:.2f}x" if v.get("total_return") else "—",
-                "CAGR": fmt_pct(v.get("cagr"), 1),
-                "Sharpe": fmt(v.get("sharpe"), 2),
-                "Sortino": fmt(v.get("sortino"), 2),
-                "MDD": fmt_pct(v.get("mdd"), 1),
-                "Calmar": fmt(v.get("calmar"), 2),
-                "Alpha": fmt(v.get("alpha"), 2),
-            })
-        rot_df = pd.DataFrame(rows).sort_values("전략")
-        st.dataframe(rot_df, use_container_width=True, hide_index=True)
-    else:
-        st.warning("data/regime_rotation/summary.json 미발견")
-
-    st.markdown("---")
-
-    # ── Section 5: Live Alpaca - Rotation account ──
-    st.markdown("### 💰 Alpaca Paper — Rotation 계좌 (실시간)")
-    st.caption("PA3IK9SMTDS9 (REGIME ROTATION MULTI-STR...) — GitHub Actions 자동 운영")
-
-    @st.cache_data(ttl=60)
-    def _fetch_rotation_alpaca():
-        try:
-            from alpaca.trading.client import TradingClient
-            from alpaca.trading.requests import GetOrdersRequest
-            from alpaca.trading.enums import QueryOrderStatus
-            import datetime as _dt
-            key = _os.environ.get("ALPACA_ROT_API_KEY")
-            secret = _os.environ.get("ALPACA_ROT_SECRET_KEY")
-            if not key or not secret:
-                return {"error": "Streamlit Cloud Secrets에 ALPACA_ROT_API_KEY / ALPACA_ROT_SECRET_KEY 등록이 필요합니다."}
-            tc = TradingClient(api_key=key, secret_key=secret, paper=True)
-            account = tc.get_account()
-            positions = tc.get_all_positions()
-            today_utc = _dt.datetime.now(_dt.timezone.utc).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            orders = tc.get_orders(filter=GetOrdersRequest(
-                status=QueryOrderStatus.ALL, after=today_utc, limit=50
-            ))
-            return {
-                "account": {
-                    "equity": float(account.equity),
-                    "cash": float(account.cash),
-                    "buying_power": float(account.buying_power),
-                    "status": str(account.status),
-                },
-                "positions": [{
-                    "symbol": p.symbol, "qty": float(p.qty),
-                    "avg_entry": float(p.avg_entry_price),
-                    "current": float(p.current_price),
-                    "market_value": float(p.market_value),
-                    "unrealized_pnl": float(p.unrealized_pl),
-                    "unrealized_pct": float(p.unrealized_plpc) * 100,
-                } for p in positions],
-                "orders_today": [{
-                    "symbol": o.symbol, "side": o.side.value, "qty": float(o.qty),
-                    "type": o.order_type.value, "status": o.status.value,
-                    "stop": float(o.stop_price) if o.stop_price else None,
-                    "limit": float(o.limit_price) if o.limit_price else None,
-                    "fill_avg": float(o.filled_avg_price) if o.filled_avg_price else None,
-                } for o in orders],
-            }
-        except Exception as e:
-            return {"error": str(e)}
-
-    if st.button("🔄 새로고침", key="refresh_rotation"):
-        st.cache_data.clear()
-        st.rerun()
-
-    rdata = _fetch_rotation_alpaca()
-    if "error" in rdata:
-        st.error(f"Rotation 계좌 연결 실패: {rdata['error']}")
-        st.caption("Streamlit Cloud → Settings → Secrets에 다음 2줄 추가 필요:")
-        st.code('ALPACA_ROT_API_KEY = "PKEB3XRTYPZTMEUCZTHYETXXOH"\n'
-                'ALPACA_ROT_SECRET_KEY = "EsatzneHAgwt8B37Kuw9QmfAvvMBYr2oSLVvxqGm8qiZ"',
-                language="toml")
-    else:
-        acc = rdata["account"]
-        seed = 100_000.0
-        pnl = acc["equity"] - seed
-        pnl_pct = (pnl / seed) * 100
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Equity", f"${acc['equity']:,.2f}", f"{pnl:+,.2f} ({pnl_pct:+.2f}%)")
-        c2.metric("Cash", f"${acc['cash']:,.2f}")
-        c3.metric("Buying Power", f"${acc['buying_power']:,.2f}")
-        c4.metric("Status", acc["status"])
-
-        st.markdown("#### Open Positions")
-        if rdata["positions"]:
-            pos_df = pd.DataFrame(rdata["positions"])
-            for col, fn in [("avg_entry", lambda x: f"${x:.2f}"),
-                            ("current", lambda x: f"${x:.2f}"),
-                            ("market_value", lambda x: f"${x:,.2f}"),
-                            ("unrealized_pnl", lambda x: f"${x:+,.2f}"),
-                            ("unrealized_pct", lambda x: f"{x:+.2f}%")]:
-                pos_df[col] = pos_df[col].apply(fn)
-            st.dataframe(pos_df, use_container_width=True, hide_index=True)
-        else:
-            st.info("보유 포지션 없음 (regime 판정 후 진입 대기 또는 BEAR/skip)")
-
-        st.markdown("#### 오늘 주문")
-        if rdata["orders_today"]:
-            ord_df = pd.DataFrame(rdata["orders_today"])
-            st.dataframe(ord_df, use_container_width=True, hide_index=True)
-        else:
-            st.info("오늘 주문 없음")
-
-    st.markdown("---")
-
-    # ── Section 6: Side-by-side equity comparison ──
-    st.markdown("### ⚖️ YB vs Rotation — 실시간 P&L 비교")
-    yb_data = _fetch_alpaca()
-    if "error" not in yb_data and "error" not in rdata:
-        yb_eq = yb_data["account"]["equity"]
-        rt_eq = rdata["account"]["equity"]
-        yb_pnl = yb_eq - 100_000.0
-        rt_pnl = rt_eq - 100_000.0
-        cA, cB, cC = st.columns(3)
-        cA.metric("🚽 YB MDD OR", f"${yb_eq:,.2f}",
-                  f"{yb_pnl:+,.2f} ({yb_pnl/1000:+.2f}%)")
-        cB.metric("🏆 Rotation P5.5", f"${rt_eq:,.2f}",
-                  f"{rt_pnl:+,.2f} ({rt_pnl/1000:+.2f}%)")
-        diff = rt_pnl - yb_pnl
-        cC.metric("차이 (Rot - YB)", f"${diff:+,.2f}",
-                  "P5.5 우위" if diff > 0 else ("YB 우위" if diff < 0 else "동일"))
-    else:
-        st.caption("두 계좌 모두 정상 연결되면 실시간 비교 카드가 여기 표시됩니다.")
-
-    st.markdown("---")
-    st.markdown("**🔗 Alpaca Rotation 계좌**: https://app.alpaca.markets/paper/dashboard/overview (계정 드롭다운에서 'REGIME ROTATION...' 선택)")
-    st.markdown("**🔗 GitHub Actions (Rotation 워크플로우)**: https://github.com/sunghakg/yb-mdd-or-trader/actions")
-    st.caption("내일 03:25 HST 첫 자동 발사 / Telegram prefix: 🔄 ROTATION")
