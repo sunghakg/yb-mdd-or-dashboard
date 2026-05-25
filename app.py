@@ -813,6 +813,8 @@ with tabs[6]:
                 except Exception: pass
                 regimes.append(base)
 
+            if not regimes:
+                return {"error": "regime 시리즈가 비어있음 (yfinance 데이터 부족 또는 SMA200 미충족)"}
             # Smooth runs < DWELL
             s = list(regimes); i = 0; n = len(s)
             while i < n:
@@ -821,19 +823,19 @@ with tabs[6]:
                 if (j - i) < DWELL and i > 0:
                     for k in range(i, j): s[k] = s[i-1]
                 i = j
-            today_reg = s[-1]
+            today_reg = s[-1] if s else "NEUTRAL"
             streak = 0
             for r in reversed(s):
                 if r == "BEAR": streak += 1
                 else: break
             gold_escape = today_reg == "BEAR" and streak > MAX_BEAR
-            active = {"BULL":"longbyungi","NEUTRAL":"longbyungi","BEAR":"yangbyungi"}[today_reg]
+            active = {"BULL":"longbyungi","NEUTRAL":"longbyungi","BEAR":"yangbyungi"}.get(today_reg, "longbyungi")
             if gold_escape:
                 active = "goldenbyungi"
-            recent = "".join(r[0] for r in s[-7:])
+            recent = "".join(r[0] for r in s[-7:]) if s else ""
             return {
                 "regime": today_reg,
-                "raw_regime": regimes[-1],
+                "raw_regime": regimes[-1] if regimes else "NEUTRAL",
                 "active": active,
                 "bear_streak": streak,
                 "max_bear": MAX_BEAR,
@@ -842,7 +844,8 @@ with tabs[6]:
                 "dwell": DWELL,
             }
         except Exception as e:
-            return {"error": str(e)}
+            import traceback
+            return {"error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()[:500]}
 
     rstate = _compute_regime_state()
     if "error" in rstate:
