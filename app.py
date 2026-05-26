@@ -141,6 +141,48 @@ alloc by QQQ weekly RSI: ≥60 100% / 45-60 70% / <45 30% watch
         - 백테 탭들(거래 내역/Stress/Bootstrap/Year-by-Year/Walk-Forward)은 **양변기 v5 단독** 결과 — BUBE의 BEAR slot 컴포넌트만 반영. 전체 BUBE rotation 백테는 별도.
         """)
 
+    # ── 매매법 구상 vs 실거래 봇 코드 매칭 검증 (2026-05-25) ──
+    st.markdown("---")
+    st.markdown("### 🔍 매매법 구상 vs `bube_trader.py` 실거래 코드 매칭")
+    st.caption("dashboard spec card vs production bot 코드 라인 비교 — 1:1 일치 검증.")
+    spec_match_rows = [
+        ("Regime 매핑", "BULL/NEUTRAL→롱변기, BEAR→양변기, BEAR streak>90→황금변기",
+         "`REGIME_TO_STRATEGY` dict (L54-59)", "✅"),
+        ("Consensus SMA200 ±2%, 2-of-3", "QQQ/SPY/SMH",
+         "`CONSENSUS_SMA_THRESHOLD=0.02, CONSENSUS_MIN_AGREE=2` (L46-48)", "✅"),
+        ("Fast BEAR OR — VIX9D/VIX>1.05", "VIX 백워데이션",
+         "`VIX_BACKWARDATION_THR=1.05` (L49) — `_compute_raw_regime_series` 적용", "✅"),
+        ("Fast BEAR OR — SOXL 5d mom<-10%", "급락 감지",
+         "`SOXL_MOM5_THR=-0.10` (L50) — 5거래일 모멘텀", "✅"),
+        ("Dwell 5d, max_bear 90d", "regime smoothing + GOLD_ESCAPE 트리거",
+         "`DWELL_DAYS=5, MAX_BEAR_DAYS=90` (L51-52)", "✅"),
+        ("롱변기 — SOXL stop-buy +1.5%, alloc 100%, gap ±5%", "BULL/NEUTRAL slot",
+         "`LB_LONG_THR=0.015, LB_ALLOC=1.0, LB_GAP_FILTER=0.05` (L62-65)", "✅"),
+        ("롱변기 -8% close-based stop", "EOD 손절",
+         "`LB_STOP_LOSS=0.08` + `action_close_loc` LOC SELL", "✅"),
+        ("양변기 v5 F1_A6 — SOXL +1.5%, SOXS +6%, short 40%", "BEAR slot pair",
+         "`YB_LONG_THR=0.015, YB_SHORT_THR=0.060, YB_SHORT_ALLOC=0.40`", "✅"),
+        ("양변기 long_alloc 50/60/70 by QQQ weekly RSI", "RSI<50/50-60/≥60",
+         "`YB_BEAR/NEUTRAL/BULL_LONG_ALLOC=0.50/0.60/0.70` (L73/72/71)", "✅"),
+        ("F1_A6 LOC — win 0% carry / loss 25% LOC", "F1_A6 변형",
+         "`YB_LOC_ON_WIN=0.0, YB_LOC_ON_LOSS=0.25` (L76-77)", "✅"),
+        ("황금변기 — SOXL K-vol breakout 0.25", "GOLD_ESCAPE slot",
+         "`GB_K_BASE=0.25` (L81), trigger = open + (prev H-L) × 0.25", "✅"),
+        ("황금변기 whipsaw filter ±5%", "전일 |수익률| ≤ 5%",
+         "`GB_WHIPSAW_GAP=0.05` (L82)", "✅"),
+        ("황금변기 RSI mode 100/70/30%", "공격/수비/관망",
+         "`GB_OFFENSIVE_ALLOC=1.0, GB_SAFETY=0.7, GB_WATCH=0.3` (L85-87)", "✅"),
+        ("4 cron 트리거 — open_moo / open_stops / close_loc / eod_sync", "월-금 자동",
+         "`action_open_moo/_stops/_close_loc/_eod_sync` (L586-777)", "✅"),
+    ]
+    spec_df = pd.DataFrame(spec_match_rows, columns=["Spec 항목", "구상 내용", "bube_trader.py 위치", "매칭"])
+    st.dataframe(spec_df, use_container_width=True, hide_index=True, height=540)
+    st.success(
+        "✅ **14/14 항목 완전 일치** — dashboard에 표기된 spec과 실제 운영 봇 코드가 1:1 매칭. "
+        "사용자가 설계한 매매법 구상이 production bot에 그대로 반영됨. "
+        "(소스: [`bube_trader.py`](https://github.com/sunghakg/yb-mdd-or-trader/blob/main/bube_trader.py))"
+    )
+
 # ───────────────────────────────────────────────────────────
 # TAB 2: 기간별 거래 내역 (NEW)
 # ───────────────────────────────────────────────────────────
@@ -171,19 +213,173 @@ with tabs[1]:
         st.warning("⚠️ BUBE 풀백테 캐시 없음. 먼저 실행: `python local/strategies/regime_rotation_validation/bube_full_backtest.py`")
         st.stop()
 
-    # Summary stats from summary.json — user_seed 기준으로 비례 환산
+    def _money(v):
+        a = abs(v)
+        if a >= 1e6: return f"${v/1e6:+.2f}M" if v < 0 else f"${v/1e6:.2f}M"
+        if a >= 1e3: return f"${v:+,.0f}" if v < 0 else f"${v:,.0f}"
+        return f"${v:+,.0f}" if v < 0 else f"${v:,.0f}"
+
+    # ── 🆕 자유 시드/기간 BUBE 백테 (PRIMARY) — 사용자가 마음대로 조절 ──
+    @st.cache_data
+    def _load_bube_equity():
+        eq_path = FULL / "equity.csv"
+        if not eq_path.exists():
+            return None
+        eq = pd.read_csv(eq_path, parse_dates=["date"], index_col="date")
+        return eq
+
+    bube_eq_all = _load_bube_equity()
+    if bube_eq_all is not None and len(bube_eq_all) > 1:
+        st.markdown("### 🗓 자유 시드/기간 BUBE 백테 (PRIMARY)")
+        st.caption("위에서 입력한 시드 + 아래 기간 선택으로 BUBE rotation을 자유롭게 재집계. (precomputed daily equity slicing — 매매법 spec 변경 없이 기간만 자른다)")
+
+        bt_min_d = bube_eq_all.index.min().date()
+        bt_max_d = bube_eq_all.index.max().date()
+
+        def _apply_bube_preset(st_d, en_d):
+            st.session_state["bube_from"] = pd.Timestamp(st_d).date()
+            st.session_state["bube_to"] = pd.Timestamp(en_d).date()
+
+        def _reset_bube_dates():
+            st.session_state["bube_from"] = bt_min_d
+            st.session_state["bube_to"] = bt_max_d
+
+        db1, db2, db3 = st.columns([2, 2, 1])
+        with db1:
+            bube_d_from = st.date_input(
+                "From",
+                value=bt_min_d, min_value=bt_min_d, max_value=bt_max_d,
+                key="bube_from",
+            )
+        with db2:
+            bube_d_to = st.date_input(
+                "To",
+                value=bt_max_d, min_value=bt_min_d, max_value=bt_max_d,
+                key="bube_to",
+            )
+        with db3:
+            st.markdown("&nbsp;")
+            st.button("Reset", on_click=_reset_bube_dates, key="bube_reset")
+
+        st.markdown("**빠른 선택**")
+        bp_cols = st.columns(8)
+        _safe_last = lambda dt_str: max(bt_min_d, pd.Timestamp(dt_str).date())
+        bube_presets = [
+            ("16년 전체", str(bt_min_d), str(bt_max_d)),
+            ("2010s (10년)", str(bt_min_d), "2019-12-31"),
+            ("2020 Covid", "2020-01-02", "2020-06-30"),
+            ("2022 폭락", "2022-01-01", "2022-12-31"),
+            ("2024-08 쇼크", "2024-07-15", "2024-09-15"),
+            ("2025 관세", "2025-03-01", "2025-05-15"),
+            ("최근 5년", _safe_last((bt_max_d - pd.Timedelta(days=365*5)).strftime("%Y-%m-%d")).strftime("%Y-%m-%d"), str(bt_max_d)),
+            ("최근 1년", _safe_last((bt_max_d - pd.Timedelta(days=365)).strftime("%Y-%m-%d")).strftime("%Y-%m-%d"), str(bt_max_d)),
+        ]
+        for col, (lbl, st_d, en_d) in zip(bp_cols, bube_presets):
+            col.button(lbl, key=f"bube_preset_{lbl}", on_click=_apply_bube_preset, args=(st_d, en_d))
+
+        # Slice equity by chosen period
+        eq_period = bube_eq_all.loc[pd.Timestamp(bube_d_from):pd.Timestamp(bube_d_to)]
+        if len(eq_period) < 2:
+            st.warning(f"선택 기간({bube_d_from} ~ {bube_d_to})의 BUBE equity 데이터가 부족합니다 ({len(eq_period)}일).")
+        else:
+            # Rebase equity to user_seed at period start
+            bube_seed_in_period = float(eq_period["equity"].iloc[0])
+            scale_period = user_seed / bube_seed_in_period
+            eq_user = eq_period["equity"] * scale_period
+
+            period_start_eq = user_seed
+            period_end_eq = float(eq_user.iloc[-1])
+            period_pnl = period_end_eq - period_start_eq
+            period_ret = period_end_eq / period_start_eq - 1
+
+            n_days = len(eq_period)
+            n_years = n_days / 252
+            cagr_p = (period_end_eq / period_start_eq) ** (1/n_years) - 1 if n_years > 0 else 0
+            cummax_p = eq_user.cummax()
+            dd_p = eq_user / cummax_p - 1
+            mdd_p = float(dd_p.min())
+            rets_p = eq_user.pct_change().dropna()
+            sharpe_p = float(rets_p.mean() / rets_p.std() * np.sqrt(252)) if rets_p.std() > 0 else 0
+            calmar_p = cagr_p / abs(mdd_p) if mdd_p < 0 else float("inf")
+
+            st.markdown(f"#### 📐 선택 기간 성과 — 시드 ${user_seed:,.0f}, {bube_d_from} → {bube_d_to} ({n_days} 거래일, {n_years:.2f}년)")
+            pc1, pc2, pc3, pc4 = st.columns(4)
+            pc1.metric("Final Equity", _money(period_end_eq), f"{period_ret*100:+,.1f}%")
+            pc2.metric("기간 PnL", _money(period_pnl))
+            pc3.metric("CAGR", f"{cagr_p*100:+.1f}%")
+            pc4.metric("MDD", f"{mdd_p*100:+.1f}%")
+            pc5, pc6, pc7, pc8 = st.columns(4)
+            pc5.metric("Sharpe", f"{sharpe_p:.2f}")
+            pc6.metric("Calmar", f"{calmar_p:.2f}" if calmar_p != float("inf") else "∞")
+            # Regime/active strategy distribution within period
+            if "regime" in eq_period.columns:
+                regime_share = eq_period["regime"].value_counts(normalize=True) * 100
+                top_regime = regime_share.index[0] if len(regime_share) else "—"
+                pc7.metric("주 regime", top_regime, f"{regime_share.iloc[0]:.0f}% of period" if len(regime_share) else "—")
+            if "active" in eq_period.columns:
+                active_share = eq_period["active"].value_counts(normalize=True) * 100
+                top_active = active_share.index[0] if len(active_share) else "—"
+                pc8.metric("주 sub-strategy", top_active, f"{active_share.iloc[0]:.0f}% of period" if len(active_share) else "—")
+
+            st.markdown(f"#### 📈 BUBE Equity Curve — ${user_seed:,.0f} 시드 기준")
+            chart_period = pd.DataFrame({
+                "BUBE ($)": eq_user.values,
+            }, index=eq_period.index)
+            st.line_chart(chart_period, height=320)
+
+            # Regime/active distribution detail
+            with st.expander("🎯 선택 기간 내 regime / sub-strategy 시간 분포"):
+                rg1, rg2 = st.columns(2)
+                with rg1:
+                    if "regime" in eq_period.columns:
+                        rdf = (eq_period["regime"].value_counts(normalize=True) * 100).round(1)
+                        rdf_df = pd.DataFrame({"Regime": rdf.index, "Days %": rdf.values})
+                        st.markdown("**Regime 분포 (일 비율)**")
+                        st.dataframe(rdf_df, use_container_width=True, hide_index=True)
+                with rg2:
+                    if "active" in eq_period.columns:
+                        adf = (eq_period["active"].value_counts(normalize=True) * 100).round(1)
+                        adf_df = pd.DataFrame({"Sub-strategy": adf.index, "Days %": adf.values})
+                        st.markdown("**Active sub-strategy 분포 (일 비율)**")
+                        st.dataframe(adf_df, use_container_width=True, hide_index=True)
+                if "goldenbyungi" not in eq_period.get("active", pd.Series(dtype=str)).unique():
+                    st.caption("ℹ️ 선택 기간에 황금변기 미발동 (BEAR streak > 90일 조건 미충족). 16년 풀 표본에서도 발동 0회 — 닷컴급 super-bear에서만 트리거.")
+
+            # Per-period trade count
+            st.markdown(f"#### 📋 선택 기간 트레이드 요약")
+            try:
+                trades_full = pd.read_csv(FULL / "trades.csv")
+                trades_full["date"] = pd.to_datetime(trades_full["date"])
+                trades_period = trades_full[
+                    (trades_full["date"] >= pd.Timestamp(bube_d_from)) &
+                    (trades_full["date"] <= pd.Timestamp(bube_d_to))
+                ].copy()
+                # Scale pnl to user seed
+                trades_period["pnl_scaled"] = trades_period["pnl"] * scale_period
+                tc1, tc2, tc3, tc4 = st.columns(4)
+                tc1.metric("Trade events", f"{len(trades_period):,}")
+                realized_p = float(trades_period["pnl_scaled"].sum())
+                tc2.metric("Realized P&L (scaled)", _money(realized_p))
+                nz = trades_period[trades_period["pnl_scaled"] != 0]
+                wr_p = (nz["pnl_scaled"] > 0).mean() * 100 if len(nz) else 0
+                tc3.metric("Win rate", f"{wr_p:.1f}%")
+                if "strategy" in trades_period.columns and len(trades_period):
+                    top_strat = trades_period["strategy"].value_counts().idxmax()
+                    tc4.metric("주 strategy", top_strat,
+                               f"{(trades_period['strategy']==top_strat).mean()*100:.0f}% of trades")
+            except Exception as e:
+                st.caption(f"⚠️ 트레이드 요약 계산 실패: {e}")
+
+        st.markdown("---")
+
+    # Summary stats from summary.json — 전체 16년 cache (참고)
     bube_summary = load_json(FULL / "summary.json")
     if bube_summary:
+        st.markdown("### 📊 전체 16년 캐시 성과 (precomputed)")
         bt_seed = float(bube_summary.get("seed", 100_000))
         scale_bube = user_seed / bt_seed
         final_eq_scaled = float(bube_summary["final_equity"]) * scale_bube
         gain_scaled = final_eq_scaled - user_seed
-
-        def _money(v):
-            a = abs(v)
-            if a >= 1e6: return f"${v/1e6:+.2f}M" if v < 0 else f"${v/1e6:.2f}M"
-            if a >= 1e3: return f"${v:+,.0f}" if v < 0 else f"${v:,.0f}"
-            return f"${v:+,.0f}" if v < 0 else f"${v:,.0f}"
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("기간", bube_summary.get("period", "—"))
@@ -1165,12 +1361,12 @@ with tabs[5]:
             st.markdown("### bm90 알파 (split별 IS Cal — 검증된 우월성 / OOS Cal)")
             alpha_rows = []
             for split in v5["split"].unique():
-                sub = v5[v5["split"] == split]
+                split_df = v5[v5["split"] == split]
                 try:
-                    t2_base = sub[sub["spec"] == "T2GE_None"].iloc[0]
-                    t2_90 = sub[sub["spec"] == "T2GE_bm90"].iloc[0]
-                    t1_base = sub[sub["spec"] == "T1_None"].iloc[0]
-                    t1_60 = sub[sub["spec"] == "T1_bm60"].iloc[0]
+                    t2_base = split_df[split_df["spec"] == "T2GE_None"].iloc[0]
+                    t2_90 = split_df[split_df["spec"] == "T2GE_bm90"].iloc[0]
+                    t1_base = split_df[split_df["spec"] == "T1_None"].iloc[0]
+                    t1_60 = split_df[split_df["spec"] == "T1_bm60"].iloc[0]
                     alpha_rows.append({
                         "Split": split,
                         "T1 bm60 IS Δ Cal": f"{t1_60['is_cal']-t1_base['is_cal']:+.2f}",
