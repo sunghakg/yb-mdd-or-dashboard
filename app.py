@@ -156,14 +156,20 @@ with tabs[1]:
     # Summary stats from summary.json
     bube_summary = load_json(FULL / "summary.json")
     if bube_summary:
-        c1, c2, c3, c4, c5 = st.columns(5)
+        seed = float(bube_summary.get("seed", 100_000))
+        final_eq = float(bube_summary["final_equity"])
+        gain = final_eq - seed
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("기간", bube_summary.get("period", "—"))
-        c2.metric("Final Equity",
-                  f"${bube_summary['final_equity']/1e6:.2f}M",
+        c2.metric("시작 시드", f"${seed:,.0f}")
+        c3.metric("Final Equity",
+                  f"${final_eq/1e6:.2f}M" if final_eq >= 1e6 else f"${final_eq:,.0f}",
                   f"{bube_summary['total_return_pct']:+,.0f}%")
-        c3.metric("CAGR", f"{bube_summary['cagr_pct']:+.1f}%")
-        c4.metric("MDD", f"{bube_summary['mdd_pct']:+.1f}%")
-        c5.metric("Calmar", str(bube_summary.get("calmar", "—")))
+        c4.metric("기간 $ PnL",
+                  f"${gain/1e6:+.2f}M" if abs(gain) >= 1e6 else f"${gain:+,.0f}")
+        c5.metric("CAGR", f"{bube_summary['cagr_pct']:+.1f}%")
+        c6.metric("MDD", f"{bube_summary['mdd_pct']:+.1f}%")
+        st.caption(f"📐 Calmar: {bube_summary.get('calmar', '—')}")
 
         usage = bube_summary.get("strategy_usage", {})
         if usage:
@@ -331,7 +337,10 @@ with tabs[1]:
 
     # ── Period metrics ──
     st.markdown("### 📊 기간 성과 요약")
-    eq_norm = eq_sl["equity"] / eq_sl["equity"].iloc[0]
+    start_eq = float(eq_sl["equity"].iloc[0])
+    end_eq = float(eq_sl["equity"].iloc[-1])
+    period_dollar_pnl = end_eq - start_eq
+    eq_norm = eq_sl["equity"] / start_eq
     period_ret = float(eq_norm.iloc[-1] - 1)
     n_days = len(eq_sl)
     n_years = n_days / 252
@@ -348,6 +357,17 @@ with tabs[1]:
     pf = gross_win / gross_loss if gross_loss > 0 else float("inf")
     realized_pnl = float(trades_sl["pnl"].sum())
 
+    # Row 1: 자본 흐름 (시작/종료/PnL $) — 사용자가 한눈에 보길 원한 부분
+    st.markdown(f"**🪙 자본 흐름** ({d_from} → {d_to}, {n_days} 거래일)")
+    cap1, cap2, cap3 = st.columns(3)
+    cap1.metric("시작 자본", f"${start_eq:,.0f}")
+    cap2.metric("종료 자본", f"${end_eq:,.0f}",
+                f"{period_ret*100:+.1f}%")
+    cap3.metric("기간 $ PnL",
+                f"${period_dollar_pnl:+,.0f}",
+                f"Realized: ${realized_pnl:+,.0f}")
+
+    # Row 2: 수익률 metrics
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Return", fmt_pct(period_ret))
     c2.metric("CAGR (annualized)", fmt_pct(cagr))
@@ -356,11 +376,12 @@ with tabs[1]:
     c5.metric("SOXL B&H", fmt_pct(bench_ret), f"Δ {fmt_pct(period_ret - bench_ret)}")
     c6.metric("거래수", f"{len(trades_sl):,}")
 
+    # Row 3: 거래 통계
     c7, c8, c9, c10 = st.columns(4)
     c7.metric("Win Rate", f"{win_rate*100:.1f}%")
     c8.metric("Profit Factor", fmt(pf) if pf != float("inf") else "∞")
-    c9.metric("Realized PnL", f"${realized_pnl:,.0f}")
-    c10.metric("Avg PnL/trade", f"${realized_pnl/len(trades_sl):,.0f}" if len(trades_sl)>0 else "—")
+    c9.metric("Avg PnL/trade", f"${realized_pnl/len(trades_sl):,.0f}" if len(trades_sl)>0 else "—")
+    c10.metric("Gross Win / Loss", f"${gross_win:,.0f} / ${gross_loss:,.0f}")
 
     # ── Equity curve ──
     st.markdown("### 📈 Equity Curve (선택 기간)")
@@ -423,8 +444,14 @@ with tabs[1]:
     trades_sl["진입사유"] = trades_sl.apply(_entry_reason, axis=1)
     trades_sl["청산사유"] = trades_sl.apply(_exit_reason, axis=1)
 
+    # 6) 기간 누적 PnL — 시작 자본 기준 매 거래 후 누적 이익 ($)
+    trades_sl = trades_sl.sort_values("date").reset_index(drop=True)
+    trades_sl["cum_period_pnl"] = trades_sl["pnl"].cumsum()
+    trades_sl["equity_after_trade"] = start_eq + trades_sl["cum_period_pnl"]
+
     # ── Trade log ──
     st.markdown(f"### 📒 거래 내역 ({len(trades_sl):,} rows) — 사유·진행 포함")
+    st.caption(f"💡 시작 자본 ${start_eq:,.0f} 기준 — '기간 누적 PnL' 컬럼이 매 거래 후 누적 이익을 보여줍니다 (= 거래 후 자본 − 시작 자본).")
 
     # Filter by leg / exit_type / regime / pnl
     f1, f2, f3, f4 = st.columns(4)
@@ -452,8 +479,9 @@ with tabs[1]:
     if "ticker" in show_t.columns: display_cols.append("ticker")
     display_cols += ["entry_px", "exit_px"]
     if "exit_type" in show_t.columns: display_cols.append("exit_type")
-    display_cols += ["qty", "notional", "pnl", "pnl_pct", "pnl_vs_equity",
-                     "bench_day_ret", "equity_eod", "진입사유", "청산사유"]
+    display_cols += ["qty", "notional", "pnl", "cum_period_pnl", "equity_after_trade",
+                     "pnl_pct", "pnl_vs_equity",
+                     "bench_day_ret", "진입사유", "청산사유"]
     display_cols = [c for c in display_cols if c in show_t.columns]
     show_disp = show_t[display_cols].copy()
 
@@ -469,19 +497,22 @@ with tabs[1]:
         show_disp["exit_px"] = show_disp["exit_px"].apply(lambda x: f"${x:.2f}")
     if "pnl" in show_disp.columns:
         show_disp["pnl"] = show_disp["pnl"].apply(lambda x: f"${x:+,.2f}")
+    if "cum_period_pnl" in show_disp.columns:
+        show_disp["cum_period_pnl"] = show_disp["cum_period_pnl"].apply(lambda x: f"${x:+,.0f}")
+    if "equity_after_trade" in show_disp.columns:
+        show_disp["equity_after_trade"] = show_disp["equity_after_trade"].apply(lambda x: f"${x:,.0f}")
     if "qty" in show_disp.columns:
         show_disp["qty"] = show_disp["qty"].apply(lambda x: f"{x:,.2f}")
     if "notional" in show_disp.columns:
         show_disp["notional"] = show_disp["notional"].apply(lambda x: f"${x:,.0f}")
-    if "equity_eod" in show_disp.columns:
-        show_disp["equity_eod"] = show_disp["equity_eod"].apply(lambda x: f"${x:,.0f}" if pd.notna(x) else "—")
     show_disp["date"] = show_disp["date"].dt.strftime("%Y-%m-%d")
     show_disp = show_disp.rename(columns={
         "date": "날짜", "regime": "Regime", "leg": "방향",
         "entry_px": "진입가", "exit_px": "청산가", "exit_type": "청산타입",
-        "qty": "수량", "notional": "Notional", "pnl": "PnL",
+        "qty": "수량", "notional": "Notional", "pnl": "거래 PnL",
+        "cum_period_pnl": "기간 누적 PnL", "equity_after_trade": "거래 후 자본",
         "pnl_pct": "PnL%", "pnl_vs_equity": "Equity영향%",
-        "bench_day_ret": "SOXL 당일%", "equity_eod": "EOD Equity",
+        "bench_day_ret": "SOXL 당일%",
     })
 
     # Pagination — large tables can be slow
