@@ -146,30 +146,56 @@ alloc by QQQ weekly RSI: ≥60 100% / 45-60 70% / <45 30% watch
 # ───────────────────────────────────────────────────────────
 with tabs[1]:
     st.subheader("📋 BUBE 전체 rotation 8년 거래 내역 (롱변기 + 양변기 + 황금변기)")
-    st.caption("ℹ️ Tier 2 GOLD_ESCAPE bm=90 mapping. yfinance daily OHLC, $100K seed. multi_strategy_paper.simulate_day 엔진 + BUBE T2 mapping 어댑터.")
+    st.caption("ℹ️ Tier 2 GOLD_ESCAPE bm=90 mapping. yfinance daily OHLC. multi_strategy_paper.simulate_day 엔진 + BUBE T2 mapping 어댑터.")
+
+    # ── 사용자 정의 시작 자본 — 이 페이지의 모든 $ 값이 이 시드 기준으로 비례 환산됨 ──
+    seed_col1, seed_col2 = st.columns([1, 3])
+    user_seed = seed_col1.number_input(
+        "시작 자본 ($)",
+        min_value=100,
+        max_value=10_000_000,
+        value=10_000,
+        step=1_000,
+        key="user_seed_input",
+        help="백테는 $100K 시드로 실행되었지만, 이 값으로 모든 $ 결과를 비례 스케일링합니다. % 수익률은 변하지 않음."
+    )
+    seed_col2.markdown(
+        f"<div style='padding-top:1.7em;color:#888'>"
+        f"💡 모든 $ 값(자본, PnL, notional, 누적 PnL)이 <b>${user_seed:,.0f}</b> 시드 기준으로 환산됩니다. % 수익률은 동일."
+        f"</div>",
+        unsafe_allow_html=True
+    )
 
     FULL = ROOT / "bube_full"
     if not (FULL / "trades.csv").exists():
         st.warning("⚠️ BUBE 풀백테 캐시 없음. 먼저 실행: `python local/strategies/regime_rotation_validation/bube_full_backtest.py`")
         st.stop()
 
-    # Summary stats from summary.json
+    # Summary stats from summary.json — user_seed 기준으로 비례 환산
     bube_summary = load_json(FULL / "summary.json")
     if bube_summary:
-        seed = float(bube_summary.get("seed", 100_000))
-        final_eq = float(bube_summary["final_equity"])
-        gain = final_eq - seed
+        bt_seed = float(bube_summary.get("seed", 100_000))
+        scale_bube = user_seed / bt_seed
+        final_eq_scaled = float(bube_summary["final_equity"]) * scale_bube
+        gain_scaled = final_eq_scaled - user_seed
+
+        def _money(v):
+            a = abs(v)
+            if a >= 1e6: return f"${v/1e6:+.2f}M" if v < 0 else f"${v/1e6:.2f}M"
+            if a >= 1e3: return f"${v:+,.0f}" if v < 0 else f"${v:,.0f}"
+            return f"${v:+,.0f}" if v < 0 else f"${v:,.0f}"
+
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("기간", bube_summary.get("period", "—"))
-        c2.metric("시작 시드", f"${seed:,.0f}")
+        c2.metric("시작 시드", f"${user_seed:,.0f}")
         c3.metric("Final Equity",
-                  f"${final_eq/1e6:.2f}M" if final_eq >= 1e6 else f"${final_eq:,.0f}",
+                  _money(final_eq_scaled),
                   f"{bube_summary['total_return_pct']:+,.0f}%")
         c4.metric("기간 $ PnL",
-                  f"${gain/1e6:+.2f}M" if abs(gain) >= 1e6 else f"${gain:+,.0f}")
+                  f"${gain_scaled/1e6:+.2f}M" if abs(gain_scaled) >= 1e6 else f"${gain_scaled:+,.0f}")
         c5.metric("CAGR", f"{bube_summary['cagr_pct']:+.1f}%")
         c6.metric("MDD", f"{bube_summary['mdd_pct']:+.1f}%")
-        st.caption(f"📐 Calmar: {bube_summary.get('calmar', '—')}")
+        st.caption(f"📐 Calmar: {bube_summary.get('calmar', '—')} · 백테 시드 ${bt_seed:,.0f} → 사용자 시드 ${user_seed:,.0f} (×{scale_bube:.4f} 환산)")
 
         usage = bube_summary.get("strategy_usage", {})
         if usage:
@@ -335,12 +361,14 @@ with tabs[1]:
         st.info(f"선택 기간({d_from} ~ {d_to})에 거래 없음.")
         st.stop()
 
-    # ── Period metrics ──
+    # ── Period metrics — user_seed 기준으로 비례 환산 ──
     st.markdown("### 📊 기간 성과 요약")
-    start_eq = float(eq_sl["equity"].iloc[0])
-    end_eq = float(eq_sl["equity"].iloc[-1])
+    bt_start_eq = float(eq_sl["equity"].iloc[0])      # 백테 원본 시작 자본
+    scale_yb = user_seed / bt_start_eq                 # 사용자 시드 / 백테 시작 자본
+    start_eq = user_seed                                # 사용자가 지정한 시작 자본
+    end_eq = float(eq_sl["equity"].iloc[-1]) * scale_yb
     period_dollar_pnl = end_eq - start_eq
-    eq_norm = eq_sl["equity"] / start_eq
+    eq_norm = eq_sl["equity"] / bt_start_eq
     period_ret = float(eq_norm.iloc[-1] - 1)
     n_days = len(eq_sl)
     n_years = n_days / 252
@@ -351,6 +379,12 @@ with tabs[1]:
     rets = eq_sl["equity"].pct_change().dropna()
     sharpe = float(rets.mean() / rets.std() * np.sqrt(252)) if rets.std() > 0 else 0
     bench_ret = float(bench_sl["close"].iloc[-1] / bench_sl["close"].iloc[0] - 1) if len(bench_sl) > 1 else 0
+
+    # 거래 PnL/notional 비례 환산 (% 컬럼은 그대로 유지)
+    trades_sl["pnl"] = trades_sl["pnl"] * scale_yb
+    if "notional" in trades_sl.columns:
+        trades_sl["notional"] = trades_sl["notional"] * scale_yb
+
     win_rate = float((trades_sl["pnl"] > 0).mean())
     gross_win = float(trades_sl.loc[trades_sl["pnl"] > 0, "pnl"].sum())
     gross_loss = float(-trades_sl.loc[trades_sl["pnl"] < 0, "pnl"].sum())
@@ -383,11 +417,11 @@ with tabs[1]:
     c9.metric("Avg PnL/trade", f"${realized_pnl/len(trades_sl):,.0f}" if len(trades_sl)>0 else "—")
     c10.metric("Gross Win / Loss", f"${gross_win:,.0f} / ${gross_loss:,.0f}")
 
-    # ── Equity curve ──
-    st.markdown("### 📈 Equity Curve (선택 기간)")
+    # ── Equity curve — user_seed 기준 절대 $ ──
+    st.markdown(f"### 📈 Equity Curve (선택 기간, ${user_seed:,.0f} 시드 기준)")
     chart_df = pd.DataFrame({
-        "YB MDD OR": (eq_sl["equity"] / eq_sl["equity"].iloc[0] * 100).values,
-        "SOXL B&H": (bench_sl["close"] / bench_sl["close"].iloc[0] * 100).reindex(eq_sl.index).ffill().values,
+        "양변기 v5 ($)": (eq_sl["equity"] / bt_start_eq * user_seed).values,
+        "SOXL B&H ($)": (bench_sl["close"] / bench_sl["close"].iloc[0] * user_seed).reindex(eq_sl.index).ffill().values,
     }, index=eq_sl.index)
     st.line_chart(chart_df)
 
@@ -415,9 +449,9 @@ with tabs[1]:
         return "BEAR"
     trades_sl["regime"] = trades_sl["active_long_alloc"].apply(_regime)
 
-    # 3) Equity at trade date (post-EOD) for capital context
+    # 3) Equity at trade date (post-EOD) for capital context — user_seed 기준으로 환산
     eq_lookup = equity_all["equity"]
-    trades_sl["equity_eod"] = trades_sl["date"].map(eq_lookup)
+    trades_sl["equity_eod"] = trades_sl["date"].map(eq_lookup) * scale_yb
     trades_sl["pnl_vs_equity"] = trades_sl["pnl"] / trades_sl["equity_eod"]
 
     # 4) SOXL B&H daily return on trade date (시장 흐름 컨텍스트)
