@@ -1,0 +1,23 @@
+{
+  "spec": "Yangbyungi v5 F1_A6 — ALWAYS-ON (regime ignored)",
+  "period": "2010-05-25 → 2026-05-21",
+  "years": 15.99,
+  "seed": 100000.0,
+  "final_equity": 40476734.22431952,
+  "total_return_pct": 40376.73,
+  "cagr_pct": 45.57,
+  "mdd_pct": -33.67,
+  "calmar": 1.35,
+  "sharpe": 1.32,
+  "n_trades": 6392,
+  "n_days": 4023,
+  "action_counts": {
+    "STOP_BUY": 2621,
+    "MOO_SELL": 2620,
+    "LOC_SELL": 1151
+  },
+  "leg_counts": {
+    "LONG": 5251,
+    "SHORT": 1141
+  }
+}

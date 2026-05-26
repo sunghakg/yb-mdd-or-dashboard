@@ -1,0 +1,204 @@
+{
+  "BUBE_통합": {
+    "model": "trade-level OHLC",
+    "operational": true,
+    "data": "SOXL/SOXS daily OHLC, regime detector (T2 GOLD_ESCAPE bm=90)",
+    "code": "regime_rotation_validation/bube_full_backtest.py",
+    "spec": "BUBE Tier 2 GOLD_ESCAPE bm=90",
+    "stats": {
+      "years": 15.99,
+      "start": "2010-05-25",
+      "end": "2026-05-21",
+      "initial": 100000.0,
+      "final": 1923056836.799015,
+      "cagr_pct": 85.32,
+      "mdd_pct": -45.92,
+      "calmar": 1.86,
+      "n_trades": 5203,
+      "strategy_usage": {
+        "longbyungi": 3569,
+        "yangbyungi": 1634
+      }
+    },
+    "note": "운영 기준점. 황금변기는 16년 동안 0번 발동 (dead code)"
+  },
+  "롱변기_단독": {
+    "model": "trade-level OHLC",
+    "operational": false,
+    "data": "SOXL daily OHLC",
+    "code": "longbyungi_backtest.py",
+    "spec": "breakout_thr=0.5%, stop_loss=7%, alloc=100%",
+    "stats": {
+      "years": 15.62,
+      "start": "2010-10-01",
+      "end": "2026-05-14",
+      "cagr_pct": 119.7,
+      "mdd_pct": -75.08,
+      "calmar": 1.594,
+      "sharpe": 1.458,
+      "n_trades": 3238,
+      "win_rate": 0.5491,
+      "profit_factor": 1.318,
+      "stop_rate": 0.0837
+    },
+    "note": "단독 사용 시 MDD -75% 거침. BUBE에서 BULL/NEUTRAL regime에만 활성화"
+  },
+  "황금변기_단독": {
+    "model": "trade-level OHLC",
+    "operational": false,
+    "data": "SOXL daily OHLC",
+    "code": "goldenbyungi_backtest.py",
+    "spec": "k_base=0.25, RSI-based alloc (60/45 thresholds), stop=99% (사실상 없음)",
+    "stats": {
+      "years": 15.62,
+      "start": "2010-10-01",
+      "end": "2026-05-14",
+      "cagr_pct": 82.94,
+      "mdd_pct": -40.46,
+      "calmar": 2.05,
+      "sharpe": 1.643,
+      "n_trades": 2267,
+      "win_rate": 0.5814,
+      "profit_factor": 1.364,
+      "stop_rate": 0.0,
+      "mode_counts": {
+        "offensive_days": 2082,
+        "safety_days": 1444,
+        "watch_days": 402
+      }
+    },
+    "note": "단독으론 Cal 2.05 우수. BUBE에선 BEAR streak >90d 발동 — 16년간 0회 발동 → dead code"
+  },
+  "양변기_v5_단독": {
+    "model": "trade-level OHLC",
+    "operational": false,
+    "data": "SOXL/SOXS daily OHLC",
+    "code": "yb_mdd_or_full_backtest.py → yangbyungi_intraday",
+    "spec": "F1_A6 LOC asymmetric (loc_on_win 50%, loc_on_loss 100%), 10-day MOC forced exit",
+    "stats": {
+      "years": 7.96,
+      "start": "2018-06-04",
+      "end": "2026-05-22",
+      "initial": 99917.96794737656,
+      "final": 2933647.14007147,
+      "cagr_pct": 52.86,
+      "mdd_pct": -20.74,
+      "calmar": 2.55,
+      "sharpe": 1.7,
+      "n_trades": 2122,
+      "win_rate": 0.699,
+      "profit_factor": 1.37,
+      "exit_types": {
+        "MOO_NEXT": 1361,
+        "LOC": 760,
+        "FINAL_CLOSE": 1
+      }
+    },
+    "note": "BUBE에서 BEAR regime에만 활성화. 단독으로도 8년 Cal 우수"
+  },
+  "CHAMP_alloc_sweep_k0.72": {
+    "model": "returns-stream (idealized)",
+    "operational": false,
+    "data": "BUBE daily returns × 8 slots × cash sleeve k",
+    "code": "regime_rotation_validation/slot_rotation_alloc_sweep.py",
+    "spec": "n_slots=8, h_lb=14, h_yb=14, h_gb=7, lb_stop=11%, k=0.72",
+    "stats_idealized": {
+      "calmar_8y": 4.32,
+      "mdd_8y_pct": -20.04,
+      "cagr_8y_pct": 86.6
+    },
+    "stats_trade_level_overlay": {
+      "note": "bube_alloc_sweep_tradelevel.py로 BUBE equity × k=0.72 적용",
+      "calmar_16y": 1.77,
+      "mdd_16y_pct": -34,
+      "cagr_16y_pct": 60
+    },
+    "verdict": "★환상★ 8-slot 합성 비현실. trade-level에선 Cal 1.77 박스"
+  },
+  "Slot_rotation_N7_H7": {
+    "model": "returns-stream (idealized)",
+    "operational": false,
+    "data": "BUBE daily returns × N slots, returns 곱셈",
+    "code": "regime_rotation_validation/slot_rotation_position.py",
+    "spec": "N=7, H=7 days, per-slot cumulative stop",
+    "stats_idealized": {
+      "calmar": 3.53,
+      "mdd_improvement_pp": -11,
+      "cagr_improvement_pp": 7
+    },
+    "verdict": "★환상★ 동일자산 SOXL을 returns 합성 — path dependency 무시, 슬롯 분산 효과 0"
+  },
+  "V_bear_cap_escape_valve": {
+    "model": "returns-stream (idealized)",
+    "operational": false,
+    "data": "BUBE daily returns + bear cap regime conditional",
+    "code": "regime_rotation_validation/V_bear_cap_comprehensive.py",
+    "stats_idealized": {
+      "calmar_8y": 6.52,
+      "claim": "+6.5% CAGR improvement"
+    },
+    "stats_trade_level": {
+      "calmar_8y": 2.4,
+      "calmar_16y": 1.87,
+      "mdd_16y_pct": -45.9,
+      "note": "escape valve는 trade-level 16년 0회 발동 → dead code"
+    },
+    "verdict": "★환상★ Cal 6.52는 returns-stream cherry-pick. 운영치는 BUBE 자체"
+  },
+  "legacy_classification": {
+    "regime_rotation_P5.5": {
+      "code": "regime_rotation_validation/P5_5_champion_validation.py",
+      "is_trade_level": false,
+      "has_returns_stream_pattern": false,
+      "output_dir": null
+    },
+    "synthesis": {
+      "code": "synthesis_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": null
+    },
+    "synthesis_nq_v5base": {
+      "code": "synthesis_nq_v2.py",
+      "is_trade_level": false,
+      "has_returns_stream_pattern": false,
+      "output_dir": "synthesis_nq_v5base"
+    },
+    "soxl_dip": {
+      "code": "soxl_dip_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": "soxl_dip"
+    },
+    "soxl_dip_v3": {
+      "code": "soxl_dip_v3_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": "soxl_dip_v3"
+    },
+    "soxl_rsi": {
+      "code": "soxl_rsi_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": "soxl_rsi"
+    },
+    "dongpa": {
+      "code": "dongpa_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": null
+    },
+    "meta_pro": {
+      "code": "meta_pro_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": "meta_pro"
+    },
+    "dlsapal_pro": {
+      "code": "dlsapal_pro_backtest.py",
+      "is_trade_level": true,
+      "has_returns_stream_pattern": false,
+      "output_dir": null
+    }
+  }
+}

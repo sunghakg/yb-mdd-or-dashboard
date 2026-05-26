@@ -404,13 +404,21 @@ with tabs[1]:
                 )
 
     # ── BUBE 풀 trades quick view ──
+    # 2026-05-26: trades_enriched.csv 우선 사용 — regime/active/bear_streak/사유 컬럼 포함
     @st.cache_data
     def _load_bube_trades():
+        enriched = ROOT / "bube_full" / "trades_enriched.csv"
+        if enriched.exists():
+            t = pd.read_csv(enriched)
+            t["date"] = pd.to_datetime(t["date"])
+            return t, True
         t = pd.read_csv(ROOT / "bube_full" / "trades.csv")
         t["date"] = pd.to_datetime(t["date"])
-        return t
+        return t, False
 
-    bube_trades = _load_bube_trades()
+    bube_trades, _is_enriched = _load_bube_trades()
+    if _is_enriched:
+        st.success("📒 거래 로그가 **enriched** 버전 — regime / bear_streak / 사유 컬럼 포함 (2026-05-26 trade-level 검증 통과)")
     bf1, bf2, bf3 = st.columns([2, 1, 1])
     strategy_sel = bf1.multiselect(
         "Strategy filter",
@@ -457,11 +465,31 @@ with tabs[1]:
     disp["qty"] = disp["qty"].apply(lambda x: f"{x:,.2f}")
     disp["price"] = disp["price"].apply(lambda x: f"${x:.4f}")
     disp["pnl"] = disp["pnl"].apply(lambda x: f"${x:+,.2f}")
-    disp = disp.rename(columns={
-        "date": "날짜", "strategy": "Sub-strategy", "leg": "방향",
-        "ticker": "Ticker", "action": "Action", "qty": "수량",
-        "price": "체결가", "pnl": "PnL", "side": "Side",
-    })
+    if _is_enriched and "bear_streak" in disp.columns:
+        disp["bear_streak"] = disp["bear_streak"].fillna(0).astype(int).apply(
+            lambda x: f"{x}d" if x > 0 else "—")
+        if "equity_eod" in disp.columns:
+            disp["equity_eod"] = disp["equity_eod"].apply(
+                lambda v: f"${v/1e6:,.2f}M" if abs(v) >= 1e6 else f"${v:,.0f}")
+        rename_map = {
+            "date": "날짜", "strategy": "Sub-strategy", "leg": "방향",
+            "ticker": "Ticker", "action": "Action", "qty": "수량",
+            "price": "체결가", "pnl": "PnL", "side": "Side",
+            "regime_today": "Regime", "active_today": "Active",
+            "bear_streak": "BEAR streak", "equity_eod": "Equity EOD",
+            "reason_short": "사유 (요약)", "reason_detail": "사유 (상세)",
+        }
+        # Drop the redundant active_today (it duplicates strategy in BUBE) + cash_eod
+        for col in ("active_today", "cash_eod"):
+            if col in disp.columns:
+                disp = disp.drop(columns=[col])
+        disp = disp.rename(columns=rename_map)
+    else:
+        disp = disp.rename(columns={
+            "date": "날짜", "strategy": "Sub-strategy", "leg": "방향",
+            "ticker": "Ticker", "action": "Action", "qty": "수량",
+            "price": "체결가", "pnl": "PnL", "side": "Side",
+        })
     rows_per_page = 100
     n_pages = max(1, (len(disp) + rows_per_page - 1) // rows_per_page)
     page = st.number_input(
@@ -480,6 +508,46 @@ with tabs[1]:
                   f"{bube_filt['date'].max().date() if len(bube_filt) else 'empty'}.csv",
         mime="text/csv", key="bube_dl"
     )
+
+    st.markdown("---")
+
+    # ── 2026-05-26: BUBE regime switching 가치 입증 (양변기 v5 ALWAYS-ON 16y vs BUBE 통합 비교) ──
+    st.markdown("### 🔍 Trade-level 검증 (2026-05-26) — BUBE regime switching의 가치")
+    st.caption("ℹ️ 사용자 질문 '여태 본 백테가 허상이 아닐까'에 대한 답. 같은 trade-level OHLC 잣대로 양변기 v5를 always-on 16y로 돌린 결과 vs BUBE 통합 비교.")
+
+    yb_only_path = ROOT / "yangbyungi_only_16yr" / "summary.json"
+    if yb_only_path.exists():
+        yb_only = load_json(yb_only_path)
+        bube_sum = load_json(FULL / "summary.json")
+        if yb_only and bube_sum:
+            vc1, vc2, vc3, vc4 = st.columns(4)
+            vc1.metric("BUBE 통합 16y Calmar", f"{bube_sum['calmar']:.2f}",
+                       f"MDD {bube_sum['mdd_pct']:.1f}%")
+            vc2.metric("양변기 v5 ALWAYS-ON 16y Calmar", f"{yb_only['calmar']:.2f}",
+                       f"MDD {yb_only['mdd_pct']:.1f}%")
+            delta_cal = bube_sum['calmar'] - yb_only['calmar']
+            vc3.metric("Regime switching Δ Calmar", f"+{delta_cal:.2f}",
+                       "BUBE 통합이 우월")
+            vc4.metric("양변기 8y vs 16y", "Cal 2.55 → 1.35",
+                       "8년 결과는 cherry-pick")
+            st.info(
+                "💡 **핵심 인사이트**: 양변기 v5 단독 8년 Cal 2.55는 매력적이지만, 16년 always-on으로 확장하면 **Cal 1.35로 반토막**, "
+                "MDD −20.7% → −33.7%. 2010~2018 bull market에서 long+short pair의 underperformance가 드러남. "
+                f"BUBE 통합 (regime switching) Cal {bube_sum['calmar']:.2f}는 "
+                f"양변기 always-on 대비 **+{delta_cal:.2f} Calmar** 추가 — regime 기반 sub-strategy 스위칭이 long-horizon에서 가치 입증."
+            )
+
+    # ── 환상으로 확정된 매매법 라벨 (returns-stream idealization) ──
+    with st.expander("🚨 returns-stream 환상으로 확정된 매매법 (운영 사용 금지)", expanded=False):
+        st.markdown("""
+| 매매법 | 메모리 권고치 (idealized) | trade-level 운영 추정 | verdict |
+|---|---|---|---|
+| CHAMP alloc sweep k=0.72 | Calmar **4.32**, MDD −20% | Calmar 1.77, MDD −34% | 8-slot returns 합성 환상 |
+| Slot rotation N7_H7 | Calmar **3.53**, MDD −11pp 개선 | 슬롯 분산 효과 0 | 동일자산 SOXL returns 곱셈 |
+| V_bear_cap escape valve | Calmar **6.52** (8y) | Cal 2.40 (8y) / 1.87 (16y), 발동 0회 | dead code, idealized cherry-pick |
+
+**규칙**: returns-stream 합성 모델 결과로 운영 alloc·slot 수·진입 빈도 권고 금지. trade-level OHLC만 인용 가능.
+""")
 
     st.markdown("---")
     st.markdown("### 📜 양변기 v5 단독 — BEAR slot 컴포넌트 풀 백테 (참고용)")
