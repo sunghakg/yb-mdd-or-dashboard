@@ -659,510 +659,529 @@ with tabs[1]:
 # TAB 3: Stress Tests
 # ───────────────────────────────────────────────────────────
 with tabs[2]:
-    # ── Section 1: BUBE rotation V6 crisis stress (PRIMARY) ──
-    st.subheader("🛡️ BUBE V6 Crisis Stress (2026-05-23)")
-    st.caption("V_bear_cap_comprehensive — 5개 위기 × T1 (NEUTRAL→황금변기) / T2GE (BUBE GOLD_ESCAPE) × bear_max 변형")
+    sub = st.tabs(['🛡️ BUBE V6 위기 (PRIMARY)', '📜 양변기 v5 — 16년 일봉', '⏱️ 8년 분봉 stress'])
 
-    def _bm_label(x):
-        if pd.isna(x) or str(x).lower() in ("none", "nan"):
-            return "baseline"
-        return f"bm{int(float(x))}"
+    # — sub[0] 🛡️ BUBE V6 위기 (PRIMARY) —
+    with sub[0]:
+        # ── Section 1: BUBE rotation V6 crisis stress (PRIMARY) ──
+        st.subheader("🛡️ BUBE V6 Crisis Stress (2026-05-23)")
+        st.caption("V_bear_cap_comprehensive — 5개 위기 × T1 (NEUTRAL→황금변기) / T2GE (BUBE GOLD_ESCAPE) × bear_max 변형")
 
-    v6_path = ROOT / "V_bear_cap" / "V6_crisis_stress.csv"
-    if v6_path.exists():
-        v6 = pd.read_csv(v6_path)
+        def _bm_label(x):
+            if pd.isna(x) or str(x).lower() in ("none", "nan"):
+                return "baseline"
+            return f"bm{int(float(x))}"
 
-        # Pivot: rows = crisis, cols = spec (tier+bear_max), values = total_ret
-        v6["spec"] = v6["tier"].astype(str) + "_" + v6["bear_max"].apply(_bm_label)
-        pivot_ret = v6.pivot_table(index="crisis", columns="spec", values="total_ret", aggfunc="first")
-        pivot_mdd = v6.pivot_table(index="crisis", columns="spec", values="mdd", aggfunc="first")
+        v6_path = ROOT / "V_bear_cap" / "V6_crisis_stress.csv"
+        if v6_path.exists():
+            v6 = pd.read_csv(v6_path)
 
-        # Highlighted view: T1 baseline vs T1 bm60 vs T2GE baseline vs T2GE bm90
-        key_cols = ["T1_baseline", "T1_bm60", "T2GE_baseline", "T2GE_bm90"]
-        avail_cols = [c for c in key_cols if c in pivot_ret.columns]
-        if avail_cols:
-            display_df = pd.DataFrame(index=pivot_ret.index)
-            for col in avail_cols:
-                display_df[f"{col} Ret"] = pivot_ret[col].apply(lambda x: fmt_pct(x) if pd.notna(x) else "—")
-                display_df[f"{col} MDD"] = pivot_mdd[col].apply(lambda x: fmt_pct(x) if pd.notna(x) else "—")
-            st.dataframe(display_df, use_container_width=True)
+            # Pivot: rows = crisis, cols = spec (tier+bear_max), values = total_ret
+            v6["spec"] = v6["tier"].astype(str) + "_" + v6["bear_max"].apply(_bm_label)
+            pivot_ret = v6.pivot_table(index="crisis", columns="spec", values="total_ret", aggfunc="first")
+            pivot_mdd = v6.pivot_table(index="crisis", columns="spec", values="mdd", aggfunc="first")
 
-            # Alpha vs baseline
-            st.markdown("### Δ Return: bear_cap escape valve 알파")
-            alpha_rows = []
-            for crisis in pivot_ret.index:
-                row = {"Crisis": crisis}
-                if "T1_baseline" in pivot_ret.columns and "T1_bm60" in pivot_ret.columns:
-                    delta = pivot_ret.loc[crisis, "T1_bm60"] - pivot_ret.loc[crisis, "T1_baseline"]
-                    row["T1 bm60 Δ"] = f"{delta*100:+.1f}%p" if abs(delta) > 0.001 else "0 (escape 미발동)"
-                if "T2GE_baseline" in pivot_ret.columns and "T2GE_bm90" in pivot_ret.columns:
-                    delta = pivot_ret.loc[crisis, "T2GE_bm90"] - pivot_ret.loc[crisis, "T2GE_baseline"]
-                    row["T2GE bm90 Δ"] = f"{delta*100:+.1f}%p" if abs(delta) > 0.001 else "0 (escape 미발동)"
-                if "T2GE_baseline" in pivot_ret.columns and "T2GE_bm60" in pivot_ret.columns:
-                    delta = pivot_ret.loc[crisis, "T2GE_bm60"] - pivot_ret.loc[crisis, "T2GE_baseline"]
-                    row["T2GE bm60 Δ (위험!)"] = f"{delta*100:+.1f}%p" if abs(delta) > 0.001 else "0"
-                alpha_rows.append(row)
-            st.dataframe(pd.DataFrame(alpha_rows), use_container_width=True, hide_index=True)
+            # Highlighted view: T1 baseline vs T1 bm60 vs T2GE baseline vs T2GE bm90
+            key_cols = ["T1_baseline", "T1_bm60", "T2GE_baseline", "T2GE_bm90"]
+            avail_cols = [c for c in key_cols if c in pivot_ret.columns]
+            if avail_cols:
+                display_df = pd.DataFrame(index=pivot_ret.index)
+                for col in avail_cols:
+                    display_df[f"{col} Ret"] = pivot_ret[col].apply(lambda x: fmt_pct(x) if pd.notna(x) else "—")
+                    display_df[f"{col} MDD"] = pivot_mdd[col].apply(lambda x: fmt_pct(x) if pd.notna(x) else "—")
+                st.dataframe(display_df, use_container_width=True)
 
-            st.info(
-                "**핵심**: 5 위기 중 **2022_full만 escape 발동**. T1 bm60 +3.5%p, T2GE bm90 +5%p 알파. "
-                "T2GE **bm60는 절대 금지** (2022 -10.9%p 폭망)."
-            )
+                # Alpha vs baseline
+                st.markdown("### Δ Return: bear_cap escape valve 알파")
+                alpha_rows = []
+                for crisis in pivot_ret.index:
+                    row = {"Crisis": crisis}
+                    if "T1_baseline" in pivot_ret.columns and "T1_bm60" in pivot_ret.columns:
+                        delta = pivot_ret.loc[crisis, "T1_bm60"] - pivot_ret.loc[crisis, "T1_baseline"]
+                        row["T1 bm60 Δ"] = f"{delta*100:+.1f}%p" if abs(delta) > 0.001 else "0 (escape 미발동)"
+                    if "T2GE_baseline" in pivot_ret.columns and "T2GE_bm90" in pivot_ret.columns:
+                        delta = pivot_ret.loc[crisis, "T2GE_bm90"] - pivot_ret.loc[crisis, "T2GE_baseline"]
+                        row["T2GE bm90 Δ"] = f"{delta*100:+.1f}%p" if abs(delta) > 0.001 else "0 (escape 미발동)"
+                    if "T2GE_baseline" in pivot_ret.columns and "T2GE_bm60" in pivot_ret.columns:
+                        delta = pivot_ret.loc[crisis, "T2GE_bm60"] - pivot_ret.loc[crisis, "T2GE_baseline"]
+                        row["T2GE bm60 Δ (위험!)"] = f"{delta*100:+.1f}%p" if abs(delta) > 0.001 else "0"
+                    alpha_rows.append(row)
+                st.dataframe(pd.DataFrame(alpha_rows), use_container_width=True, hide_index=True)
 
-        with st.expander("전체 변형 (T1 bm30/45/60/None, T2GE bm60/90/None)"):
-            st.dataframe(v6.round(4), use_container_width=True, hide_index=True)
-    else:
-        st.warning("V_bear_cap/V6_crisis_stress.csv 없음")
+                st.info(
+                    "**핵심**: 5 위기 중 **2022_full만 escape 발동**. T1 bm60 +3.5%p, T2GE bm90 +5%p 알파. "
+                    "T2GE **bm60는 절대 금지** (2022 -10.9%p 폭망)."
+                )
 
-    st.markdown("---")
+            with st.expander("전체 변형 (T1 bm30/45/60/None, T2GE bm60/90/None)"):
+                st.dataframe(v6.round(4), use_container_width=True, hide_index=True)
+        else:
+            st.warning("V_bear_cap/V6_crisis_stress.csv 없음")
 
-    # ── Section 2: 양변기 v5 단독 16년 일봉 (BEAR slot 컴포넌트) ──
-    st.subheader("📜 양변기 v5 단독 — BEAR slot 컴포넌트 (16년 일봉)")
-    st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독 백테. 참고용.")
-    crash_rows = [
-        ("2011 Euro crisis", -53.2, -6.4, -19.5, -0.44),
-        ("2015-16 China", -33.1, +6.8, -10.1, 1.04),
-        ("2018 Q4", -47.4, +1.7, -7.4, 0.64),
-        ("2020 Covid", -47.2, +15.8, -15.7, 2.79),
-        ("2022 full year", -86.6, +25.8, -13.1, 1.99),
-        ("2024-08 Aug shock", -47.9, +8.0, -5.1, 11.52),
-        ("2025 Tariff", -9.9, +5.0, -8.6, 3.23),
-    ]
-    df_crash = pd.DataFrame(crash_rows, columns=["Period", "B&H Ret %", "YB v5 Ret %", "YB v5 MDD %", "YB v5 Calmar"])
-    df_crash["Outcome"] = df_crash["YB v5 Ret %"].apply(lambda x: "✅ 양수" if x > 0 else "⚠️ 손실")
-    st.dataframe(df_crash, use_container_width=True, hide_index=True)
-    st.markdown("---")
+    # — sub[1] 📜 양변기 v5 — 16년 일봉 —
+    with sub[1]:
+        # ── Section 2: 양변기 v5 단독 16년 일봉 (BEAR slot 컴포넌트) ──
+        st.subheader("📜 양변기 v5 단독 — BEAR slot 컴포넌트 (16년 일봉)")
+        st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독 백테. 참고용.")
+        crash_rows = [
+            ("2011 Euro crisis", -53.2, -6.4, -19.5, -0.44),
+            ("2015-16 China", -33.1, +6.8, -10.1, 1.04),
+            ("2018 Q4", -47.4, +1.7, -7.4, 0.64),
+            ("2020 Covid", -47.2, +15.8, -15.7, 2.79),
+            ("2022 full year", -86.6, +25.8, -13.1, 1.99),
+            ("2024-08 Aug shock", -47.9, +8.0, -5.1, 11.52),
+            ("2025 Tariff", -9.9, +5.0, -8.6, 3.23),
+        ]
+        df_crash = pd.DataFrame(crash_rows, columns=["Period", "B&H Ret %", "YB v5 Ret %", "YB v5 MDD %", "YB v5 Calmar"])
+        df_crash["Outcome"] = df_crash["YB v5 Ret %"].apply(lambda x: "✅ 양수" if x > 0 else "⚠️ 손실")
+        st.dataframe(df_crash, use_container_width=True, hide_index=True)
 
-    st.subheader("8년 분봉 stress (양변기 v5 단독, IBKR)")
-    extended = load_json(ROOT / "extended_stress_oos" / "summary.json")
-    if extended:
-        # Show only 2022/Covid/2018 for key crashes (분봉)
-        for period_key, period_label in [
-            ("2018_Q4", "2018 Q4 (분봉)"),
-            ("2020_Covid", "2020 Covid (분봉)"),
-            ("2022_full", "2022 (분봉)"),
-            ("Full_8yr", "Full 8년 (2018-06 ~ 2026-05)"),
-        ]:
-            if period_key in extended:
-                rows = []
-                for strat, s in extended[period_key].items():
-                    rows.append({
-                        "Strategy": strat,
-                        "CAGR": fmt_pct(s.get("cagr")),
-                        "MDD": fmt_pct(s.get("mdd")),
-                        "Sharpe": fmt(s.get("sharpe")),
-                        "Calmar": fmt(s.get("calmar")),
-                    })
-                with st.expander(f"📊 {period_label}", expanded=(period_key == "Full_8yr")):
-                    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-    else:
-        st.info("백테 결과 파일 없음. extended_stress_oos.py 먼저 실행 필요.")
+    # — sub[2] ⏱️ 8년 분봉 stress —
+    with sub[2]:
+        st.subheader("8년 분봉 stress (양변기 v5 단독, IBKR)")
+        extended = load_json(ROOT / "extended_stress_oos" / "summary.json")
+        if extended:
+            # Show only 2022/Covid/2018 for key crashes (분봉)
+            for period_key, period_label in [
+                ("2018_Q4", "2018 Q4 (분봉)"),
+                ("2020_Covid", "2020 Covid (분봉)"),
+                ("2022_full", "2022 (분봉)"),
+                ("Full_8yr", "Full 8년 (2018-06 ~ 2026-05)"),
+            ]:
+                if period_key in extended:
+                    rows = []
+                    for strat, s in extended[period_key].items():
+                        rows.append({
+                            "Strategy": strat,
+                            "CAGR": fmt_pct(s.get("cagr")),
+                            "MDD": fmt_pct(s.get("mdd")),
+                            "Sharpe": fmt(s.get("sharpe")),
+                            "Calmar": fmt(s.get("calmar")),
+                        })
+                    with st.expander(f"📊 {period_label}", expanded=(period_key == "Full_8yr")):
+                        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.info("백테 결과 파일 없음. extended_stress_oos.py 먼저 실행 필요.")
 
 # ───────────────────────────────────────────────────────────
 # TAB 4: Bootstrap
 # ───────────────────────────────────────────────────────────
 with tabs[3]:
-    # ── Section 1: BUBE rotation V3 bootstrap (PRIMARY) ──
-    st.subheader("🎲 BUBE V3 Bootstrap — 6,000 paths (2026-05-23)")
-    st.caption("V_bear_cap_comprehensive — 4 spec × 11 metric × 6000 stationary block bootstrap paths")
+    sub = st.tabs(['🎲 BUBE V3 (6000 paths, PRIMARY)', '📜 양변기 v5 — 5000 paths (참고용)'])
 
-    v3_path = ROOT / "V_bear_cap" / "V3_bootstrap.csv"
-    if v3_path.exists():
-        v3 = pd.read_csv(v3_path)
+    # — sub[0] 🎲 BUBE V3 (6000 paths, PRIMARY) —
+    with sub[0]:
+        # ── Section 1: BUBE rotation V3 bootstrap (PRIMARY) ──
+        st.subheader("🎲 BUBE V3 Bootstrap — 6,000 paths (2026-05-23)")
+        st.caption("V_bear_cap_comprehensive — 4 spec × 11 metric × 6000 stationary block bootstrap paths")
 
-        # Spec ordering: highlight T2GE bm90 + show others
-        spec_order = ["T2GE_bm90", "T2GE_None", "T1_bm60", "T1_None", "T2GE_bm60", "T1_bm45", "T1_bm30"]
-        v3["spec_rank"] = v3["spec"].map({s: i for i, s in enumerate(spec_order)}).fillna(99)
-        v3 = v3.sort_values("spec_rank").drop(columns="spec_rank")
+        v3_path = ROOT / "V_bear_cap" / "V3_bootstrap.csv"
+        if v3_path.exists():
+            v3 = pd.read_csv(v3_path)
 
-        rows = []
-        for _, r in v3.iterrows():
-            star = " 🏆" if r["spec"] == "T2GE_bm90" else (" ⚠️" if r["spec"] == "T2GE_bm60" else "")
-            rows.append({
-                "Spec": f"{r['spec']}{star}",
-                "Cal p05": fmt(r["cal_p05"]),
-                "Cal p50": fmt(r["cal_p50"]),
-                "Cal p95": fmt(r["cal_p95"]),
-                "CAGR p50": fmt_pct(r["cagr_p50"]),
-                "MDD p50": fmt_pct(r["mdd_p50"]),
-                "P(MDD<-30%)": f"{r['p_mdd_under_30p']*100:.1f}%",
-                "P(MDD<-40%)": f"{r['p_mdd_under_40p']*100:.1f}%",
-                "P(Cal>2)": f"{r['p_cal_over_2']*100:.1f}%",
-                "P(Cal>3)": f"{r['p_cal_over_3']*100:.1f}%",
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            # Spec ordering: highlight T2GE bm90 + show others
+            spec_order = ["T2GE_bm90", "T2GE_None", "T1_bm60", "T1_None", "T2GE_bm60", "T1_bm45", "T1_bm30"]
+            v3["spec_rank"] = v3["spec"].map({s: i for i, s in enumerate(spec_order)}).fillna(99)
+            v3 = v3.sort_values("spec_rank").drop(columns="spec_rank")
 
-        # Key comparisons
-        col1, col2 = st.columns(2)
-        t1_b = v3[v3["spec"] == "T1_None"].iloc[0] if (v3["spec"] == "T1_None").any() else None
-        t1_60 = v3[v3["spec"] == "T1_bm60"].iloc[0] if (v3["spec"] == "T1_bm60").any() else None
-        t2_b = v3[v3["spec"] == "T2GE_None"].iloc[0] if (v3["spec"] == "T2GE_None").any() else None
-        t2_90 = v3[v3["spec"] == "T2GE_bm90"].iloc[0] if (v3["spec"] == "T2GE_bm90").any() else None
-
-        if t1_b is not None and t1_60 is not None:
-            col1.markdown("### T1 (NEUTRAL→황금변기)")
-            col1.metric("Cal p50 (baseline → bm60)",
-                        f"{t1_b['cal_p50']:.2f} → {t1_60['cal_p50']:.2f}",
-                        f"+{t1_60['cal_p50']-t1_b['cal_p50']:.2f}")
-            col1.metric("P(Cal>3)",
-                        f"{t1_b['p_cal_over_3']*100:.1f}% → {t1_60['p_cal_over_3']*100:.1f}%",
-                        f"+{(t1_60['p_cal_over_3']-t1_b['p_cal_over_3'])*100:.1f}%p")
-
-        if t2_b is not None and t2_90 is not None:
-            col2.markdown("### T2GE (BUBE GOLD_ESCAPE)")
-            col2.metric("Cal p50 (baseline → bm90)",
-                        f"{t2_b['cal_p50']:.2f} → {t2_90['cal_p50']:.2f}",
-                        f"+{t2_90['cal_p50']-t2_b['cal_p50']:.2f}")
-            col2.metric("P(Cal>3)",
-                        f"{t2_b['p_cal_over_3']*100:.1f}% → {t2_90['p_cal_over_3']*100:.1f}%",
-                        f"+{(t2_90['p_cal_over_3']-t2_b['p_cal_over_3'])*100:.1f}%p")
-
-        st.info(
-            "**Free lunch 확인**: T2GE bm90이 baseline 대비 Cal 우월 + MDD risk 동등 (P(MDD<-30%) 88.0% vs 87.1%). "
-            "🏆 = production 추천, ⚠️ = V6 stress -10.9%p 폭망 위험으로 절대 금지."
-        )
-
-        # V9 drawdown duration supplement
-        v9_path = ROOT / "V_bear_cap" / "V9_drawdown.csv"
-        if v9_path.exists():
-            v9 = pd.read_csv(v9_path)
-            st.markdown("### V9 Drawdown Duration")
-            v9_disp = v9.copy()
-            v9_disp["spec"] = v9_disp["tier"].astype(str) + "_" + v9_disp["bear_max"].apply(_bm_label)
-            v9_disp = v9_disp[["spec","underwater_pct","longest_underwater_days","mdd","worst_day_pct"]]
-            v9_disp["underwater_pct"] = v9_disp["underwater_pct"].apply(lambda x: f"{x*100:.1f}%")
-            v9_disp["mdd"] = v9_disp["mdd"].apply(fmt_pct)
-            v9_disp["worst_day_pct"] = v9_disp["worst_day_pct"].apply(fmt_pct)
-            v9_disp.columns = ["Spec", "Underwater %", "Longest UW (days)", "MDD", "Worst day"]
-            st.dataframe(v9_disp, use_container_width=True, hide_index=True)
-            st.caption("T1 bm60 longest UW **246d → 156d (-90일, -37%)**. MDD 동일하지만 회복 속도 대폭 상승.")
-    else:
-        st.warning("V_bear_cap/V3_bootstrap.csv 없음")
-
-    st.markdown("---")
-    st.subheader("📜 양변기 v5 단독 — BEAR slot 컴포넌트 5,000 paths (참고용)")
-    st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독 bootstrap. BUBE rotation 전체와는 다름.")
-    bs = load_json(ROOT / "bootstrap_results" / "summary.json")
-    if bs:
-        rows = []
-        for strat, s in bs.items():
-            rows.append({
-                "Strategy": strat,
-                "CAGR median": fmt_pct(s["cagr"]["median"]),
-                "CAGR 95% lo": fmt_pct(s["cagr"]["ci_2.5"]),
-                "CAGR 95% hi": fmt_pct(s["cagr"]["ci_97.5"]),
-                "MDD median": fmt_pct(s["mdd"]["median"]),
-                "MDD worst (95%)": fmt_pct(s["mdd"]["ci_2.5"]),
-                "Calmar median": fmt(s["calmar"]["median"]),
-                "Calmar 95% lo": fmt(s["calmar"]["ci_2.5"]),
-                "Calmar 95% hi": fmt(s["calmar"]["ci_97.5"]),
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-        st.markdown("---")
-        st.subheader("실패 확률 (5,000 path 중)")
-        prob_rows = []
-        for strat in bs:
-            # Re-read paths CSV for prob calc
-            paths_csv = ROOT / "bootstrap_results" / f"paths_{strat}.csv"
-            if paths_csv.exists():
-                pd_df = pd.read_csv(paths_csv)
-                prob_rows.append({
-                    "Strategy": strat,
-                    "P(CAGR<0)": f"{(pd_df['cagr']<0).mean()*100:.1f}%",
-                    "P(MDD<-40%)": f"{(pd_df['mdd']<-0.40).mean()*100:.1f}%",
-                    "P(Calmar<1)": f"{(pd_df['calmar']<1).mean()*100:.1f}%",
-                    "P(Calmar<2)": f"{(pd_df['calmar']<2).mean()*100:.1f}%",
+            rows = []
+            for _, r in v3.iterrows():
+                star = " 🏆" if r["spec"] == "T2GE_bm90" else (" ⚠️" if r["spec"] == "T2GE_bm60" else "")
+                rows.append({
+                    "Spec": f"{r['spec']}{star}",
+                    "Cal p05": fmt(r["cal_p05"]),
+                    "Cal p50": fmt(r["cal_p50"]),
+                    "Cal p95": fmt(r["cal_p95"]),
+                    "CAGR p50": fmt_pct(r["cagr_p50"]),
+                    "MDD p50": fmt_pct(r["mdd_p50"]),
+                    "P(MDD<-30%)": f"{r['p_mdd_under_30p']*100:.1f}%",
+                    "P(MDD<-40%)": f"{r['p_mdd_under_40p']*100:.1f}%",
+                    "P(Cal>2)": f"{r['p_cal_over_2']*100:.1f}%",
+                    "P(Cal>3)": f"{r['p_cal_over_3']*100:.1f}%",
                 })
-        st.dataframe(pd.DataFrame(prob_rows), use_container_width=True, hide_index=True)
-    else:
-        st.info("Bootstrap 결과 없음. bootstrap_validation.py 먼저 실행 필요.")
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            # Key comparisons
+            col1, col2 = st.columns(2)
+            t1_b = v3[v3["spec"] == "T1_None"].iloc[0] if (v3["spec"] == "T1_None").any() else None
+            t1_60 = v3[v3["spec"] == "T1_bm60"].iloc[0] if (v3["spec"] == "T1_bm60").any() else None
+            t2_b = v3[v3["spec"] == "T2GE_None"].iloc[0] if (v3["spec"] == "T2GE_None").any() else None
+            t2_90 = v3[v3["spec"] == "T2GE_bm90"].iloc[0] if (v3["spec"] == "T2GE_bm90").any() else None
+
+            if t1_b is not None and t1_60 is not None:
+                col1.markdown("### T1 (NEUTRAL→황금변기)")
+                col1.metric("Cal p50 (baseline → bm60)",
+                            f"{t1_b['cal_p50']:.2f} → {t1_60['cal_p50']:.2f}",
+                            f"+{t1_60['cal_p50']-t1_b['cal_p50']:.2f}")
+                col1.metric("P(Cal>3)",
+                            f"{t1_b['p_cal_over_3']*100:.1f}% → {t1_60['p_cal_over_3']*100:.1f}%",
+                            f"+{(t1_60['p_cal_over_3']-t1_b['p_cal_over_3'])*100:.1f}%p")
+
+            if t2_b is not None and t2_90 is not None:
+                col2.markdown("### T2GE (BUBE GOLD_ESCAPE)")
+                col2.metric("Cal p50 (baseline → bm90)",
+                            f"{t2_b['cal_p50']:.2f} → {t2_90['cal_p50']:.2f}",
+                            f"+{t2_90['cal_p50']-t2_b['cal_p50']:.2f}")
+                col2.metric("P(Cal>3)",
+                            f"{t2_b['p_cal_over_3']*100:.1f}% → {t2_90['p_cal_over_3']*100:.1f}%",
+                            f"+{(t2_90['p_cal_over_3']-t2_b['p_cal_over_3'])*100:.1f}%p")
+
+            st.info(
+                "**Free lunch 확인**: T2GE bm90이 baseline 대비 Cal 우월 + MDD risk 동등 (P(MDD<-30%) 88.0% vs 87.1%). "
+                "🏆 = production 추천, ⚠️ = V6 stress -10.9%p 폭망 위험으로 절대 금지."
+            )
+
+            # V9 drawdown duration supplement
+            v9_path = ROOT / "V_bear_cap" / "V9_drawdown.csv"
+            if v9_path.exists():
+                v9 = pd.read_csv(v9_path)
+                st.markdown("### V9 Drawdown Duration")
+                v9_disp = v9.copy()
+                v9_disp["spec"] = v9_disp["tier"].astype(str) + "_" + v9_disp["bear_max"].apply(_bm_label)
+                v9_disp = v9_disp[["spec","underwater_pct","longest_underwater_days","mdd","worst_day_pct"]]
+                v9_disp["underwater_pct"] = v9_disp["underwater_pct"].apply(lambda x: f"{x*100:.1f}%")
+                v9_disp["mdd"] = v9_disp["mdd"].apply(fmt_pct)
+                v9_disp["worst_day_pct"] = v9_disp["worst_day_pct"].apply(fmt_pct)
+                v9_disp.columns = ["Spec", "Underwater %", "Longest UW (days)", "MDD", "Worst day"]
+                st.dataframe(v9_disp, use_container_width=True, hide_index=True)
+                st.caption("T1 bm60 longest UW **246d → 156d (-90일, -37%)**. MDD 동일하지만 회복 속도 대폭 상승.")
+        else:
+            st.warning("V_bear_cap/V3_bootstrap.csv 없음")
+
+    # — sub[1] 📜 양변기 v5 — 5000 paths (참고용) —
+    with sub[1]:
+        st.subheader("📜 양변기 v5 단독 — BEAR slot 컴포넌트 5,000 paths (참고용)")
+        st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독 bootstrap. BUBE rotation 전체와는 다름.")
+        bs = load_json(ROOT / "bootstrap_results" / "summary.json")
+        if bs:
+            rows = []
+            for strat, s in bs.items():
+                rows.append({
+                    "Strategy": strat,
+                    "CAGR median": fmt_pct(s["cagr"]["median"]),
+                    "CAGR 95% lo": fmt_pct(s["cagr"]["ci_2.5"]),
+                    "CAGR 95% hi": fmt_pct(s["cagr"]["ci_97.5"]),
+                    "MDD median": fmt_pct(s["mdd"]["median"]),
+                    "MDD worst (95%)": fmt_pct(s["mdd"]["ci_2.5"]),
+                    "Calmar median": fmt(s["calmar"]["median"]),
+                    "Calmar 95% lo": fmt(s["calmar"]["ci_2.5"]),
+                    "Calmar 95% hi": fmt(s["calmar"]["ci_97.5"]),
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            st.markdown("---")
+            st.subheader("실패 확률 (5,000 path 중)")
+            prob_rows = []
+            for strat in bs:
+                # Re-read paths CSV for prob calc
+                paths_csv = ROOT / "bootstrap_results" / f"paths_{strat}.csv"
+                if paths_csv.exists():
+                    pd_df = pd.read_csv(paths_csv)
+                    prob_rows.append({
+                        "Strategy": strat,
+                        "P(CAGR<0)": f"{(pd_df['cagr']<0).mean()*100:.1f}%",
+                        "P(MDD<-40%)": f"{(pd_df['mdd']<-0.40).mean()*100:.1f}%",
+                        "P(Calmar<1)": f"{(pd_df['calmar']<1).mean()*100:.1f}%",
+                        "P(Calmar<2)": f"{(pd_df['calmar']<2).mean()*100:.1f}%",
+                    })
+            st.dataframe(pd.DataFrame(prob_rows), use_container_width=True, hide_index=True)
+        else:
+            st.info("Bootstrap 결과 없음. bootstrap_validation.py 먼저 실행 필요.")
 
 # ───────────────────────────────────────────────────────────
 # TAB 5: Year-by-Year
 # ───────────────────────────────────────────────────────────
 with tabs[4]:
-    # ── Section 0: BUBE rotation 8년 equity curve (line chart) ──
-    st.subheader("📈 BUBE Rotation 8년 Equity Curve (2018-06 ~ 2026-05)")
-    st.caption("V_bear_cap_comprehensive _cache_eq.pkl 기반 sub-strategy equities × regime series 합성 ($100K seed)")
+    sub = st.tabs(['📈 BUBE 8년 Equity Curve', '📅 BUBE V8 Yearly (PRIMARY)', '📜 양변기 v5 — 16년 yearly', '🌐 Cross-Asset 일반화'])
 
-    eq_path = ROOT / "V_bear_cap" / "bube_equity.csv"
-    if eq_path.exists():
-        eq_df = pd.read_csv(eq_path, parse_dates=["date"], index_col="date")
+    # — sub[0] 📈 BUBE 8년 Equity Curve —
+    with sub[0]:
+        # ── Section 0: BUBE rotation 8년 equity curve (line chart) ──
+        st.subheader("📈 BUBE Rotation 8년 Equity Curve (2018-06 ~ 2026-05)")
+        st.caption("V_bear_cap_comprehensive _cache_eq.pkl 기반 sub-strategy equities × regime series 합성 ($100K seed)")
 
-        # Final equity summary
-        final = eq_df.iloc[-1]
-        col_show = ["t2ge_bm90", "t2ge_baseline", "t1_bm60", "t1_baseline", "bench"]
-        labels = {
-            "t2ge_bm90": "🏆 BUBE T2GE bm90",
-            "t2ge_baseline": "T2GE baseline (no escape)",
-            "t1_bm60": "T1 bm60",
-            "t1_baseline": "T1 baseline",
-            "bench": "SOXL B&H",
-        }
+        eq_path = ROOT / "V_bear_cap" / "bube_equity.csv"
+        if eq_path.exists():
+            eq_df = pd.read_csv(eq_path, parse_dates=["date"], index_col="date")
 
-        # Headline metrics row
-        c1, c2, c3, c4, c5 = st.columns(5)
-        seed = 100_000.0
-        for col, ccol in zip(col_show, [c1, c2, c3, c4, c5]):
-            v = final[col]
-            pct = (v/seed - 1) * 100
-            display_v = f"${v/1e6:.2f}M" if v >= 1e6 else (f"${v/1e3:.1f}K" if v >= 1000 else f"${v:,.0f}")
-            ccol.metric(labels[col], display_v, f"{pct:+,.0f}%")
-
-        # Line chart — log scale for compounding visibility
-        chart_df = eq_df[col_show].rename(columns=labels)
-        st.line_chart(chart_df, height=400)
-        st.caption("ℹ️ SOXL B&H 8년 -100% (3x daily leverage drift). BUBE rotation 4 변형 모두 살아남음.")
-
-        # Sub-strategy breakdown
-        with st.expander("Sub-strategy 단독 equity (롱/양/황금변기 8년 단독 백테)"):
-            sub_df = eq_df[["longbyungi", "yangbyungi", "goldenbyungi", "bench"]].rename(columns={
-                "longbyungi": "롱변기 단독",
-                "yangbyungi": "양변기 v5 단독",
-                "goldenbyungi": "황금변기 단독",
+            # Final equity summary
+            final = eq_df.iloc[-1]
+            col_show = ["t2ge_bm90", "t2ge_baseline", "t1_bm60", "t1_baseline", "bench"]
+            labels = {
+                "t2ge_bm90": "🏆 BUBE T2GE bm90",
+                "t2ge_baseline": "T2GE baseline (no escape)",
+                "t1_bm60": "T1 bm60",
+                "t1_baseline": "T1 baseline",
                 "bench": "SOXL B&H",
-            })
-            st.line_chart(sub_df, height=350)
-            st.caption(
-                "각 sub-strategy를 8년 내내 단독 실행한 가상 equity. 실제 BUBE에서는 regime에 따라 매일 switching. "
-                "롱변기 단독이 가장 폭발적이지만 BEAR에서 무방비 — 통합 시 양변기/황금변기가 BEAR 보호."
+            }
+
+            # Headline metrics row
+            c1, c2, c3, c4, c5 = st.columns(5)
+            seed = 100_000.0
+            for col, ccol in zip(col_show, [c1, c2, c3, c4, c5]):
+                v = final[col]
+                pct = (v/seed - 1) * 100
+                display_v = f"${v/1e6:.2f}M" if v >= 1e6 else (f"${v/1e3:.1f}K" if v >= 1000 else f"${v:,.0f}")
+                ccol.metric(labels[col], display_v, f"{pct:+,.0f}%")
+
+            # Line chart — log scale for compounding visibility
+            chart_df = eq_df[col_show].rename(columns=labels)
+            st.line_chart(chart_df, height=400)
+            st.caption("ℹ️ SOXL B&H 8년 -100% (3x daily leverage drift). BUBE rotation 4 변형 모두 살아남음.")
+
+            # Sub-strategy breakdown
+            with st.expander("Sub-strategy 단독 equity (롱/양/황금변기 8년 단독 백테)"):
+                sub_df = eq_df[["longbyungi", "yangbyungi", "goldenbyungi", "bench"]].rename(columns={
+                    "longbyungi": "롱변기 단독",
+                    "yangbyungi": "양변기 v5 단독",
+                    "goldenbyungi": "황금변기 단독",
+                    "bench": "SOXL B&H",
+                })
+                st.line_chart(sub_df, height=350)
+                st.caption(
+                    "각 sub-strategy를 8년 내내 단독 실행한 가상 equity. 실제 BUBE에서는 regime에 따라 매일 switching. "
+                    "롱변기 단독이 가장 폭발적이지만 BEAR에서 무방비 — 통합 시 양변기/황금변기가 BEAR 보호."
+                )
+
+            st.markdown("---")
+            st.warning(
+                "⚠️ **정직한 관찰** — 단일 8년 실현 path에서는 T2GE bm90 (BUBE) < T2GE baseline. "
+                "Bootstrap 6,000 paths median에서는 bm90이 baseline 대비 Cal +0.05 우위지만 단일 path에서는 escape 발동 시점 "
+                "(2020 Covid, 2022 후반) 직후 longbyungi가 더 좋았던 노이즈. **8년 표본 escape 발동 2회는 통계적으로 약한 증거** — "
+                "future-proof 확신엔 부족. 메모리 `project_strategies.md` V_bear_cap 약점 섹션 참조."
             )
+        else:
+            st.warning("V_bear_cap/bube_equity.csv 없음 — compute_bube_equity.py 먼저 실행 필요")
 
-        st.markdown("---")
-        st.warning(
-            "⚠️ **정직한 관찰** — 단일 8년 실현 path에서는 T2GE bm90 (BUBE) < T2GE baseline. "
-            "Bootstrap 6,000 paths median에서는 bm90이 baseline 대비 Cal +0.05 우위지만 단일 path에서는 escape 발동 시점 "
-            "(2020 Covid, 2022 후반) 직후 longbyungi가 더 좋았던 노이즈. **8년 표본 escape 발동 2회는 통계적으로 약한 증거** — "
-            "future-proof 확신엔 부족. 메모리 `project_strategies.md` V_bear_cap 약점 섹션 참조."
-        )
-    else:
-        st.warning("V_bear_cap/bube_equity.csv 없음 — compute_bube_equity.py 먼저 실행 필요")
+    # — sub[1] 📅 BUBE V8 Yearly (PRIMARY) —
+    with sub[1]:
+        # ── Section 1: BUBE V8 yearly breakdown ──
+        st.subheader("📅 BUBE V8 Yearly (2018-2026, 9년)")
+        st.caption("V_bear_cap_comprehensive — T1 / T2GE × bear_max 변형 연도별 수익률 + escape 발동 일수")
 
-    st.markdown("---")
+        v8_path = ROOT / "V_bear_cap" / "V8_yearly.csv"
+        if v8_path.exists():
+            v8 = pd.read_csv(v8_path)
+            # Normalize bear_max
+            v8["bm_label"] = v8["bear_max"].apply(_bm_label)
+            v8["spec"] = v8["tier"].astype(str) + "_" + v8["bm_label"]
 
-    # ── Section 1: BUBE V8 yearly breakdown ──
-    st.subheader("📅 BUBE V8 Yearly (2018-2026, 9년)")
-    st.caption("V_bear_cap_comprehensive — T1 / T2GE × bear_max 변형 연도별 수익률 + escape 발동 일수")
+            # Focus specs: T1_baseline, T1_bm60, T2GE_baseline, T2GE_bm90
+            focus = ["T1_baseline", "T1_bm60", "T2GE_baseline", "T2GE_bm90"]
+            v8f = v8[v8["spec"].isin(focus)].copy()
+            # Pivot ret
+            pivot_ret = v8f.pivot_table(index="year", columns="spec", values="ret", aggfunc="first")
+            pivot_esc = v8f.pivot_table(index="year", columns="spec", values="escape_days", aggfunc="first")
 
-    v8_path = ROOT / "V_bear_cap" / "V8_yearly.csv"
-    if v8_path.exists():
-        v8 = pd.read_csv(v8_path)
-        # Normalize bear_max
-        v8["bm_label"] = v8["bear_max"].apply(_bm_label)
-        v8["spec"] = v8["tier"].astype(str) + "_" + v8["bm_label"]
+            # Display
+            rows = []
+            for yr in pivot_ret.index:
+                row = {"Year": int(yr)}
+                for spec in focus:
+                    if spec in pivot_ret.columns:
+                        ret = pivot_ret.loc[yr, spec]
+                        esc = pivot_esc.loc[yr, spec] if spec in pivot_esc.columns else 0
+                        val = fmt_pct(ret) if pd.notna(ret) else "—"
+                        if pd.notna(esc) and esc > 0 and "bm" in spec:
+                            val += f" ⚡{int(esc)}d"
+                        row[spec] = val
+                rows.append(row)
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.caption("⚡ = bear_cap escape valve 발동 일수 (해당 연도 BUBE 효과 발생)")
 
-        # Focus specs: T1_baseline, T1_bm60, T2GE_baseline, T2GE_bm90
-        focus = ["T1_baseline", "T1_bm60", "T2GE_baseline", "T2GE_bm90"]
-        v8f = v8[v8["spec"].isin(focus)].copy()
-        # Pivot ret
-        pivot_ret = v8f.pivot_table(index="year", columns="spec", values="ret", aggfunc="first")
-        pivot_esc = v8f.pivot_table(index="year", columns="spec", values="escape_days", aggfunc="first")
-
-        # Display
-        rows = []
-        for yr in pivot_ret.index:
-            row = {"Year": int(yr)}
+            # Cumulative + alpha
+            st.markdown("### 누적 수익 (compound)")
+            cum_rows = []
             for spec in focus:
                 if spec in pivot_ret.columns:
-                    ret = pivot_ret.loc[yr, spec]
-                    esc = pivot_esc.loc[yr, spec] if spec in pivot_esc.columns else 0
-                    val = fmt_pct(ret) if pd.notna(ret) else "—"
-                    if pd.notna(esc) and esc > 0 and "bm" in spec:
-                        val += f" ⚡{int(esc)}d"
-                    row[spec] = val
-            rows.append(row)
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        st.caption("⚡ = bear_cap escape valve 발동 일수 (해당 연도 BUBE 효과 발생)")
+                    cum = (1 + pivot_ret[spec].fillna(0)).prod() - 1
+                    cum_rows.append({"Spec": spec, "9년 누적 ret": fmt_pct(cum)})
+            st.dataframe(pd.DataFrame(cum_rows), use_container_width=True, hide_index=True)
 
-        # Cumulative + alpha
-        st.markdown("### 누적 수익 (compound)")
-        cum_rows = []
-        for spec in focus:
-            if spec in pivot_ret.columns:
-                cum = (1 + pivot_ret[spec].fillna(0)).prod() - 1
-                cum_rows.append({"Spec": spec, "9년 누적 ret": fmt_pct(cum)})
-        st.dataframe(pd.DataFrame(cum_rows), use_container_width=True, hide_index=True)
+            # Highlight escape-active years
+            active_years = v8f[(v8f["bm_label"] != "baseline") & (v8f["escape_days"] > 0)]
+            if not active_years.empty:
+                st.markdown("### Escape valve 발동 연도")
+                disp = active_years[["tier","bm_label","year","ret","escape_days"]].copy()
+                disp["ret"] = disp["ret"].apply(fmt_pct)
+                disp.columns = ["Tier", "bear_max", "Year", "Return", "Escape days"]
+                st.dataframe(disp, use_container_width=True, hide_index=True)
+                st.info(
+                    "**8년 표본에서 escape 발동 단 2회** (2020 Covid V-rebound, 2022 폭락 후반 relief rally). "
+                    "V8에서 발동 해 모두 양수 alpha — 미발동 해는 baseline과 동일 (free lunch 구조)."
+                )
 
-        # Highlight escape-active years
-        active_years = v8f[(v8f["bm_label"] != "baseline") & (v8f["escape_days"] > 0)]
-        if not active_years.empty:
-            st.markdown("### Escape valve 발동 연도")
-            disp = active_years[["tier","bm_label","year","ret","escape_days"]].copy()
-            disp["ret"] = disp["ret"].apply(fmt_pct)
-            disp.columns = ["Tier", "bear_max", "Year", "Return", "Escape days"]
-            st.dataframe(disp, use_container_width=True, hide_index=True)
-            st.info(
-                "**8년 표본에서 escape 발동 단 2회** (2020 Covid V-rebound, 2022 폭락 후반 relief rally). "
-                "V8에서 발동 해 모두 양수 alpha — 미발동 해는 baseline과 동일 (free lunch 구조)."
-            )
+            with st.expander("전체 변형 (T1 bm30/45/60/None, T2GE bm60/90/None)"):
+                v8_disp = v8.copy()
+                v8_disp["ret"] = v8_disp["ret"].apply(fmt_pct)
+                v8_disp["mdd"] = v8_disp["mdd"].apply(fmt_pct)
+                st.dataframe(v8_disp[["tier","bm_label","year","ret","mdd","escape_days"]],
+                             use_container_width=True, hide_index=True)
+        else:
+            st.warning("V_bear_cap/V8_yearly.csv 없음")
 
-        with st.expander("전체 변형 (T1 bm30/45/60/None, T2GE bm60/90/None)"):
-            v8_disp = v8.copy()
-            v8_disp["ret"] = v8_disp["ret"].apply(fmt_pct)
-            v8_disp["mdd"] = v8_disp["mdd"].apply(fmt_pct)
-            st.dataframe(v8_disp[["tier","bm_label","year","ret","mdd","escape_days"]],
-                         use_container_width=True, hide_index=True)
-    else:
-        st.warning("V_bear_cap/V8_yearly.csv 없음")
+    # — sub[2] 📜 양변기 v5 — 16년 yearly —
+    with sub[2]:
+        # ── Section 2: 양변기 v5 단독 16년 일봉 (참고용) ──
+        st.subheader("📜 양변기 v5 단독 — BEAR slot 16년 일봉 (참고용)")
+        st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독. BUBE rotation 전체와는 다름.")
+        extra = load_json(ROOT / "yb_mdd_or_extra" / "summary.json")
+        if extra and "daily_16yr" in extra:
+            yearly = extra["daily_16yr"]["yearly"]
+            rows = []
+            for y_str, r in sorted(yearly.items()):
+                rows.append({
+                    "Year": int(y_str),
+                    "YB Return": fmt_pct(r.get("return")),
+                    "YB MDD": fmt_pct(r.get("mdd")),
+                    "YB Calmar": fmt(r.get("calmar")),
+                    "B&H Return": fmt_pct(r.get("bench_return")),
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    st.markdown("---")
+            full = extra["daily_16yr"]["full"]
+            st.markdown("### 16년 종합")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("CAGR", fmt_pct(full.get("cagr")))
+            c2.metric("MDD", fmt_pct(full.get("mdd")))
+            c3.metric("Sharpe", fmt(full.get("sharpe")))
+            c4.metric("Total Return", fmt_pct(full.get("total_return")))
+        else:
+            st.info("yb_mdd_or_extra/summary.json 없음.")
 
-    # ── Section 2: 양변기 v5 단독 16년 일봉 (참고용) ──
-    st.subheader("📜 양변기 v5 단독 — BEAR slot 16년 일봉 (참고용)")
-    st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독. BUBE rotation 전체와는 다름.")
-    extra = load_json(ROOT / "yb_mdd_or_extra" / "summary.json")
-    if extra and "daily_16yr" in extra:
-        yearly = extra["daily_16yr"]["yearly"]
-        rows = []
-        for y_str, r in sorted(yearly.items()):
-            rows.append({
-                "Year": int(y_str),
-                "YB Return": fmt_pct(r.get("return")),
-                "YB MDD": fmt_pct(r.get("mdd")),
-                "YB Calmar": fmt(r.get("calmar")),
-                "B&H Return": fmt_pct(r.get("bench_return")),
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-        full = extra["daily_16yr"]["full"]
-        st.markdown("### 16년 종합")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("CAGR", fmt_pct(full.get("cagr")))
-        c2.metric("MDD", fmt_pct(full.get("mdd")))
-        c3.metric("Sharpe", fmt(full.get("sharpe")))
-        c4.metric("Total Return", fmt_pct(full.get("total_return")))
-    else:
-        st.info("yb_mdd_or_extra/summary.json 없음.")
-
-    st.markdown("---")
-    st.subheader("Cross-Asset 일반화 (분봉 5.8년)")
-    if extra and "cross_asset" in extra:
-        rows = [{
-            "Pair": r["pair"], "Spec": r["note"],
-            "CAGR": fmt_pct(r.get("cagr")),
-            "MDD": fmt_pct(r.get("mdd")),
-            "Sharpe": fmt(r.get("sharpe")),
-            "Calmar": fmt(r.get("calmar")),
-            "Alpha": fmt_pct(r.get("alpha"))
-        } for r in extra["cross_asset"]]
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        st.markdown("**결론**: SOXL/SOXS만 Calmar 2.91. TQQQ/TECL은 자산별 튜닝해도 1/3 수준.")
+    # — sub[3] 🌐 Cross-Asset 일반화 —
+    with sub[3]:
+        st.subheader("Cross-Asset 일반화 (분봉 5.8년)")
+        if extra and "cross_asset" in extra:
+            rows = [{
+                "Pair": r["pair"], "Spec": r["note"],
+                "CAGR": fmt_pct(r.get("cagr")),
+                "MDD": fmt_pct(r.get("mdd")),
+                "Sharpe": fmt(r.get("sharpe")),
+                "Calmar": fmt(r.get("calmar")),
+                "Alpha": fmt_pct(r.get("alpha"))
+            } for r in extra["cross_asset"]]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.markdown("**결론**: SOXL/SOXS만 Calmar 2.91. TQQQ/TECL은 자산별 튜닝해도 1/3 수준.")
 
 # ───────────────────────────────────────────────────────────
 # TAB 6: Walk-Forward + OOS
 # ───────────────────────────────────────────────────────────
 with tabs[5]:
-    # ── Section 1: BUBE V5 IS/OOS 4 splits (PRIMARY) ──
-    st.subheader("🔬 BUBE V5 IS/OOS 4 splits — 과적합 검증")
-    st.caption("V_bear_cap_comprehensive — 4가지 train/test 분할 × 4 specs. OOS Calmar > IS면 과적합 없음.")
+    sub = st.tabs(['🔬 BUBE V5 IS/OOS (PRIMARY)', '📜 양변기 v5 — Walk-Forward', '🧪 OOS Train/Test split'])
 
-    v5_path = ROOT / "V_bear_cap" / "V5_time_split.csv"
-    if v5_path.exists():
-        v5 = pd.read_csv(v5_path)
+    # — sub[0] 🔬 BUBE V5 IS/OOS (PRIMARY) —
+    with sub[0]:
+        # ── Section 1: BUBE V5 IS/OOS 4 splits (PRIMARY) ──
+        st.subheader("🔬 BUBE V5 IS/OOS 4 splits — 과적합 검증")
+        st.caption("V_bear_cap_comprehensive — 4가지 train/test 분할 × 4 specs. OOS Calmar > IS면 과적합 없음.")
 
-        # Display table: per-split
-        rows = []
-        for _, r in v5.iterrows():
-            delta_cal = r["oos_cal"] - r["is_cal"]
-            rows.append({
-                "Split": r["split"],
-                "Cut Date": r["cut"],
-                "Spec": r["spec"],
-                "IS CAGR": fmt_pct(r["is_cagr"]),
-                "IS Cal": fmt(r["is_cal"]),
-                "OOS CAGR": fmt_pct(r["oos_cagr"]),
-                "OOS Cal": fmt(r["oos_cal"]),
-                "Δ Cal (OOS-IS)": f"{delta_cal:+.2f}",
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        v5_path = ROOT / "V_bear_cap" / "V5_time_split.csv"
+        if v5_path.exists():
+            v5 = pd.read_csv(v5_path)
 
-        # Alpha check: per-split T2GE bm90 vs baseline
-        st.markdown("### bm90 알파 (split별 IS Cal — 검증된 우월성 / OOS Cal)")
-        alpha_rows = []
-        for split in v5["split"].unique():
-            sub = v5[v5["split"] == split]
-            try:
-                t2_base = sub[sub["spec"] == "T2GE_None"].iloc[0]
-                t2_90 = sub[sub["spec"] == "T2GE_bm90"].iloc[0]
-                t1_base = sub[sub["spec"] == "T1_None"].iloc[0]
-                t1_60 = sub[sub["spec"] == "T1_bm60"].iloc[0]
-                alpha_rows.append({
-                    "Split": split,
-                    "T1 bm60 IS Δ Cal": f"{t1_60['is_cal']-t1_base['is_cal']:+.2f}",
-                    "T1 bm60 OOS Δ Cal": f"{t1_60['oos_cal']-t1_base['oos_cal']:+.2f}",
-                    "T2GE bm90 IS Δ Cal": f"{t2_90['is_cal']-t2_base['is_cal']:+.2f}",
-                    "T2GE bm90 OOS Δ Cal": f"{t2_90['oos_cal']-t2_base['oos_cal']:+.2f}",
+            # Display table: per-split
+            rows = []
+            for _, r in v5.iterrows():
+                delta_cal = r["oos_cal"] - r["is_cal"]
+                rows.append({
+                    "Split": r["split"],
+                    "Cut Date": r["cut"],
+                    "Spec": r["spec"],
+                    "IS CAGR": fmt_pct(r["is_cagr"]),
+                    "IS Cal": fmt(r["is_cal"]),
+                    "OOS CAGR": fmt_pct(r["oos_cagr"]),
+                    "OOS Cal": fmt(r["oos_cal"]),
+                    "Δ Cal (OOS-IS)": f"{delta_cal:+.2f}",
                 })
-            except (IndexError, KeyError):
-                continue
-        if alpha_rows:
-            st.dataframe(pd.DataFrame(alpha_rows), use_container_width=True, hide_index=True)
-            st.success(
-                "**핵심**: 모든 split에서 IS 일관 우월(+0.16~+0.53), OOS 동등. "
-                "= **과적합 없음**, escape valve가 학습 구간에서 본 효과가 미래 구간에서도 유지."
-            )
-    else:
-        st.warning("V_bear_cap/V5_time_split.csv 없음")
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    st.markdown("---")
+            # Alpha check: per-split T2GE bm90 vs baseline
+            st.markdown("### bm90 알파 (split별 IS Cal — 검증된 우월성 / OOS Cal)")
+            alpha_rows = []
+            for split in v5["split"].unique():
+                sub = v5[v5["split"] == split]
+                try:
+                    t2_base = sub[sub["spec"] == "T2GE_None"].iloc[0]
+                    t2_90 = sub[sub["spec"] == "T2GE_bm90"].iloc[0]
+                    t1_base = sub[sub["spec"] == "T1_None"].iloc[0]
+                    t1_60 = sub[sub["spec"] == "T1_bm60"].iloc[0]
+                    alpha_rows.append({
+                        "Split": split,
+                        "T1 bm60 IS Δ Cal": f"{t1_60['is_cal']-t1_base['is_cal']:+.2f}",
+                        "T1 bm60 OOS Δ Cal": f"{t1_60['oos_cal']-t1_base['oos_cal']:+.2f}",
+                        "T2GE bm90 IS Δ Cal": f"{t2_90['is_cal']-t2_base['is_cal']:+.2f}",
+                        "T2GE bm90 OOS Δ Cal": f"{t2_90['oos_cal']-t2_base['oos_cal']:+.2f}",
+                    })
+                except (IndexError, KeyError):
+                    continue
+            if alpha_rows:
+                st.dataframe(pd.DataFrame(alpha_rows), use_container_width=True, hide_index=True)
+                st.success(
+                    "**핵심**: 모든 split에서 IS 일관 우월(+0.16~+0.53), OOS 동등. "
+                    "= **과적합 없음**, escape valve가 학습 구간에서 본 효과가 미래 구간에서도 유지."
+                )
+        else:
+            st.warning("V_bear_cap/V5_time_split.csv 없음")
 
-    # ── Section 2: 양변기 v5 단독 Walk-Forward + OOS (참고용) ──
-    st.subheader("📜 양변기 v5 단독 — BEAR slot 컴포넌트 Walk-Forward (참고용)")
-    st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독. 동적 timing 함정 (Calmar 1.84) 보여줌.")
-    wf = load_json(ROOT / "walkforward_8yr" / "summary.json")
-    if wf:
-        rows = []
-        wf_stats = wf.get("walk_forward", {})
-        rows.append({
-            "Strategy": "Walk-Forward (분기 동적 회전)",
-            "CAGR": fmt_pct(wf_stats.get("cagr")),
-            "MDD": fmt_pct(wf_stats.get("mdd")),
-            "Sharpe": fmt(wf_stats.get("sharpe")),
-            "Calmar": fmt(wf_stats.get("calmar")),
-        })
-        for name, s in wf.get("static", {}).items():
+    # — sub[1] 📜 양변기 v5 — Walk-Forward —
+    with sub[1]:
+        # ── Section 2: 양변기 v5 단독 Walk-Forward + OOS (참고용) ──
+        st.subheader("📜 양변기 v5 단독 — BEAR slot 컴포넌트 Walk-Forward (참고용)")
+        st.caption("ℹ️ BUBE의 BEAR regime sub-strategy 단독. 동적 timing 함정 (Calmar 1.84) 보여줌.")
+        wf = load_json(ROOT / "walkforward_8yr" / "summary.json")
+        if wf:
+            rows = []
+            wf_stats = wf.get("walk_forward", {})
             rows.append({
-                "Strategy": f"Static: {name}",
-                "CAGR": fmt_pct(s.get("cagr")),
-                "MDD": fmt_pct(s.get("mdd")),
-                "Sharpe": fmt(s.get("sharpe")),
-                "Calmar": fmt(s.get("calmar")),
+                "Strategy": "Walk-Forward (분기 동적 회전)",
+                "CAGR": fmt_pct(wf_stats.get("cagr")),
+                "MDD": fmt_pct(wf_stats.get("mdd")),
+                "Sharpe": fmt(wf_stats.get("sharpe")),
+                "Calmar": fmt(wf_stats.get("calmar")),
             })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            for name, s in wf.get("static", {}).items():
+                rows.append({
+                    "Strategy": f"Static: {name}",
+                    "CAGR": fmt_pct(s.get("cagr")),
+                    "MDD": fmt_pct(s.get("mdd")),
+                    "Sharpe": fmt(s.get("sharpe")),
+                    "Calmar": fmt(s.get("calmar")),
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-        st.markdown("### Active usage (post-warmup)")
-        usage = wf.get("usage", {})
-        if usage:
-            usage_df = pd.DataFrame([{"Strategy": k, "Usage": f"{v*100:.1f}%"} for k, v in usage.items()])
-            st.dataframe(usage_df, use_container_width=True, hide_index=True)
+            st.markdown("### Active usage (post-warmup)")
+            usage = wf.get("usage", {})
+            if usage:
+                usage_df = pd.DataFrame([{"Strategy": k, "Usage": f"{v*100:.1f}%"} for k, v in usage.items()])
+                st.dataframe(usage_df, use_container_width=True, hide_index=True)
 
-        st.warning("⚠️ Walk-Forward Calmar 1.84 < 모든 정적 변형. 동적 timing은 함정.")
-    else:
-        st.info("walk-forward 결과 없음.")
+            st.warning("⚠️ Walk-Forward Calmar 1.84 < 모든 정적 변형. 동적 timing은 함정.")
+        else:
+            st.info("walk-forward 결과 없음.")
 
-    st.markdown("---")
-    st.subheader("OOS Train(2018-2022) vs Test(2023-2026)")
-    if extended:
-        train = extended.get("Train_2018-06_2022-12", {})
-        test = extended.get("Test_2023-01_2026-05", {})
-        rows = []
-        for strat in train.keys():
-            t = train.get(strat, {})
-            te = test.get(strat, {})
-            train_cal = t.get("calmar") or 0
-            test_cal = te.get("calmar") or 0
-            rows.append({
-                "Strategy": strat,
-                "Train CAGR": fmt_pct(t.get("cagr")),
-                "Train Calmar": fmt(train_cal),
-                "Test CAGR": fmt_pct(te.get("cagr")),
-                "Test Calmar": fmt(test_cal),
-                "Δ Calmar": fmt(test_cal - train_cal, places=2),
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        st.markdown("**해석**: YB MDD OR의 Δ Calmar가 가장 작아 과적합 가장 약함.")
-
+    # — sub[2] 🧪 OOS Train/Test split —
+    with sub[2]:
+        st.subheader("OOS Train(2018-2022) vs Test(2023-2026)")
+        if extended:
+            train = extended.get("Train_2018-06_2022-12", {})
+            test = extended.get("Test_2023-01_2026-05", {})
+            rows = []
+            for strat in train.keys():
+                t = train.get(strat, {})
+                te = test.get(strat, {})
+                train_cal = t.get("calmar") or 0
+                test_cal = te.get("calmar") or 0
+                rows.append({
+                    "Strategy": strat,
+                    "Train CAGR": fmt_pct(t.get("cagr")),
+                    "Train Calmar": fmt(train_cal),
+                    "Test CAGR": fmt_pct(te.get("cagr")),
+                    "Test Calmar": fmt(test_cal),
+                    "Δ Calmar": fmt(test_cal - train_cal, places=2),
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.markdown("**해석**: YB MDD OR의 Δ Calmar가 가장 작아 과적합 가장 약함.")
 
 # ───────────────────────────────────────────────────────────
 # TAB 7: Slot Rotation (BUBE × N분할 × H일 hold 그리드)
