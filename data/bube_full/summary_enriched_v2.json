@@ -1,0 +1,36 @@
+{
+  "spec": "BUBE Tier 2 GOLD_ESCAPE bm=90 — enriched v2",
+  "period": "2010-05-25 → 2026-05-21",
+  "years": 15.99,
+  "seed": 100000.0,
+  "final_equity": 1923056836.799021,
+  "cagr_pct": 85.32,
+  "mdd_pct": -45.92,
+  "calmar": 1.86,
+  "n_trades": 5203,
+  "n_days": 4023,
+  "strategy_usage": {
+    "longbyungi": 3569,
+    "yangbyungi": 1634
+  },
+  "alloc_mode_distribution": {
+    "carry_exit": 2423,
+    "longbyungi_fixed": 1811,
+    "YB_bear": 429,
+    "YB_short_fixed": 233,
+    "YB_neutral": 176,
+    "YB_bull": 131
+  },
+  "extra_columns": [
+    "regime_today",
+    "active_today",
+    "bear_streak",
+    "entry_thr",
+    "trigger_value",
+    "alloc_used",
+    "alloc_mode",
+    "rsi_today",
+    "gap_pct",
+    "exit_reason"
+  ]
+}

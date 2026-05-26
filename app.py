@@ -418,7 +418,10 @@ with tabs[1]:
 
     bube_trades, _is_enriched = _load_bube_trades()
     if _is_enriched:
-        st.success("📒 거래 로그가 **enriched** 버전 — regime / bear_streak / 사유 컬럼 포함 (2026-05-26 trade-level 검증 통과)")
+        st.success(
+            "📒 거래 로그가 **enriched v2** — 19개 컬럼: "
+            "regime / bear_streak / 진입 thr / Trigger 가격 / Alloc % / Alloc mode / RSI / Gap / 청산 사유 (2026-05-26 trade-level 검증)"
+        )
     bf1, bf2, bf3 = st.columns([2, 1, 1])
     strategy_sel = bf1.multiselect(
         "Strategy filter",
@@ -471,6 +474,22 @@ with tabs[1]:
         if "equity_eod" in disp.columns:
             disp["equity_eod"] = disp["equity_eod"].apply(
                 lambda v: f"${v/1e6:,.2f}M" if abs(v) >= 1e6 else f"${v:,.0f}")
+        # v2 columns: trigger_value / entry_thr / alloc_used / rsi_today / gap_pct
+        if "trigger_value" in disp.columns:
+            disp["trigger_value"] = disp["trigger_value"].apply(
+                lambda v: f"${v:.4f}" if pd.notna(v) else "—")
+        if "entry_thr" in disp.columns:
+            disp["entry_thr"] = disp["entry_thr"].apply(
+                lambda v: f"{v*100:+.2f}%" if pd.notna(v) else "—")
+        if "alloc_used" in disp.columns:
+            disp["alloc_used"] = disp["alloc_used"].apply(
+                lambda v: f"{v*100:.0f}%" if pd.notna(v) else "—")
+        if "rsi_today" in disp.columns:
+            disp["rsi_today"] = disp["rsi_today"].apply(
+                lambda v: f"{v:.1f}" if pd.notna(v) else "—")
+        if "gap_pct" in disp.columns:
+            disp["gap_pct"] = disp["gap_pct"].apply(
+                lambda v: f"{v*100:+.2f}%" if pd.notna(v) else "—")
         rename_map = {
             "date": "날짜", "strategy": "Sub-strategy", "leg": "방향",
             "ticker": "Ticker", "action": "Action", "qty": "수량",
@@ -478,8 +497,11 @@ with tabs[1]:
             "regime_today": "Regime", "active_today": "Active",
             "bear_streak": "BEAR streak", "equity_eod": "Equity EOD",
             "reason_short": "사유 (요약)", "reason_detail": "사유 (상세)",
+            "entry_thr": "진입 thr", "trigger_value": "Trigger 가격",
+            "alloc_used": "Alloc %", "alloc_mode": "Alloc mode",
+            "rsi_today": "RSI", "gap_pct": "Gap %", "exit_reason": "청산 사유",
         }
-        # Drop the redundant active_today (it duplicates strategy in BUBE) + cash_eod
+        # Drop the redundant active_today (duplicates strategy) + cash_eod
         for col in ("active_today", "cash_eod"):
             if col in disp.columns:
                 disp = disp.drop(columns=[col])
