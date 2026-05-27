@@ -110,7 +110,7 @@ col2.metric("16y CAGR", f"{H_CHAMP['CAGR']:.1f}%",
             f"BASE {H_BASE['CAGR']:.1f}% · +{H_CHAMP['CAGR']-H_BASE['CAGR']:.1f}pp")
 col3.metric("16y MDD", f"{H_CHAMP['MDD']:.1f}%",
             f"BASE {H_BASE['MDD']:.1f}% · +{H_CHAMP['MDD']-H_BASE['MDD']:.1f}pp 개선")
-col4.metric("$100K → Final", _money(H_CHAMP['Final_mult'] * 100),
+col4.metric("$100K → Final", _money(H_CHAMP['Final_mult'] * 100_000),
             f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE")
 
 st.markdown("---")
@@ -162,7 +162,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
 - **MDD**: `{H_CHAMP['MDD']:.2f}%`
 - **Sharpe**: `{H_CHAMP['Sharpe']:.2f}`
 - **Calmar**: `{H_CHAMP['Calmar']:.2f}`
-- **Final** ($100K seed): `{_money(H_CHAMP['Final_mult']*100)}`
+- **Final** ($100K seed): `{_money(H_CHAMP['Final_mult']*100_000)}`
 """)
         ha2.metric("BASE (k=0.65 정적)", "")
         ha2.markdown(f"""
@@ -170,7 +170,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
 - **MDD**: `{H_BASE['MDD']:.2f}%`
 - **Sharpe**: `{H_BASE['Sharpe']:.2f}`
 - **Calmar**: `{H_BASE['Calmar']:.2f}`
-- **Final**: `{_money(H_BASE['Final_mult']*100)}`
+- **Final**: `{_money(H_BASE['Final_mult']*100_000)}`
 """)
 
         st.markdown("### 검증 (2026-05-26)")
@@ -183,7 +183,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
             ("MDD 분포", f"p50 {H_BOOT['mdd_p50']:.1f}%, P(MDD<-30%)={H_BOOT['p_mdd_worse_than_30']:.1f}%", "⚠️"),
             ("CAGR 양수 확률", f"P(CAGR>0)={H_BOOT['p_cagr_positive']:.1f}%, P(CAGR>30%)={H_BOOT['p_cagr_above_30']:.1f}%", "✅"),
             ("margin 사용", "alloc_cap 1.0 → 합법 cash sleeve, leverage 0%", "✅"),
-            ("Final $", f"$100K → {_money(H_CHAMP['Final_mult']*100)} (×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE)", "✅"),
+            ("Final $", f"$100K → {_money(H_CHAMP['Final_mult']*100_000)} (×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE)", "✅"),
         ]
         for name, desc, mark in check_data:
             st.markdown(f"**{mark} {name}** — {desc}")
@@ -289,15 +289,21 @@ with tabs[1]:
     # ── Slice ──
     eq_period = eq_all.loc[pd.Timestamp(d_from):pd.Timestamp(d_to)]
     daily_period = daily_all.loc[pd.Timestamp(d_from):pd.Timestamp(d_to)]
-    if len(eq_period) < 2:
-        st.warning(f"선택 기간({d_from} ~ {d_to})의 데이터 부족 ({len(eq_period)}일).")
-    else:
-        # Rebase to user_seed at period start
+
+    # Period-start equity → consistent rebase factor for stats + trade log.
+    # (선택 기간 첫 날의 raw equity로 user_seed 환산. 거래 로그 PnL/qty도 동일 스케일 적용)
+    if len(eq_period) >= 1:
         seed_in_period_champ = float(eq_period["CHAMP_NOMARGIN"].iloc[0])
         seed_in_period_base = float(eq_period["BASE"].iloc[0])
         scale_champ = user_seed / seed_in_period_champ
         scale_base = user_seed / seed_in_period_base
+    else:
+        seed_in_period_champ = seed_in_period_base = 100_000.0
+        scale_champ = scale_base = user_seed / 100_000.0
 
+    if len(eq_period) < 2:
+        st.warning(f"선택 기간({d_from} ~ {d_to})의 데이터 부족 ({len(eq_period)}일).")
+    else:
         eq_user_champ = eq_period["CHAMP_NOMARGIN"] * scale_champ
         eq_user_base = eq_period["BASE"] * scale_base
 
@@ -388,14 +394,15 @@ with tabs[1]:
     st.markdown("---")
 
     # ── 16년 전체 헤드라인 (참고) ──
-    st.markdown("### 📊 16년 전체 캐시 성과 (참고)")
-    seed_scale = user_seed / 100_000.0
+    # 주의: 이 섹션은 "user_seed로 16년 전(2010-05-25)부터 시작했다면" 가정 (inception rebase).
+    # 거래 로그/선택 기간 성과 카드는 period-rebase (scale_champ) 사용. 두 카드가 다른 질문에 답함.
+    st.markdown("### 📊 16년 전체 캐시 성과 (참고 — 16년 전 시작 가정)")
     fc1, fc2, fc3, fc4, fc5, fc6 = st.columns(6)
     fc1.metric("기간", champ_summary["spec"]["period"])
     fc2.metric("시드", f"${user_seed:,.0f}")
-    fc3.metric("CHAMP Final", _money(H_CHAMP["Final_mult"] * 100 * seed_scale),
+    fc3.metric("CHAMP Final", _money(H_CHAMP["Final_mult"] * user_seed),
                f"+{(H_CHAMP['Final_mult']-1)*100:,.0f}%")
-    fc4.metric("BASE Final", _money(H_BASE["Final_mult"] * 100 * seed_scale),
+    fc4.metric("BASE Final", _money(H_BASE["Final_mult"] * user_seed),
                f"+{(H_BASE['Final_mult']-1)*100:,.0f}%")
     fc5.metric("Trades", f"{champ_summary['trades_count']:,}")
     fc6.metric("$ ratio", f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.2f}")
@@ -436,8 +443,11 @@ with tabs[1]:
     elif pnl_sel == "손실만":
         tr_filt = tr_filt[tr_filt["pnl"] < 0]
 
-    # Scale pnl to user seed (백테 $100K → user_seed)
-    tr_filt["pnl_scaled"] = tr_filt["pnl"] * seed_scale
+    # Scale pnl + qty to user seed using period-rebase (선택 기간 성과 카드와 동일 스케일).
+    # 백테는 $100K base seed로 실행. period 첫 날 raw equity를 user_seed로 환산하는 factor를
+    # 동일 적용해야 거래 로그 합산 PnL이 equity curve 변화량과 일치함.
+    tr_filt["pnl_scaled"] = tr_filt["pnl"] * scale_champ
+    tr_filt["qty_int"] = (tr_filt["qty"] * scale_champ).round().astype(int)
 
     # Headline
     fc1, fc2, fc3, fc4 = st.columns(4)
@@ -454,12 +464,12 @@ with tabs[1]:
     # Display
     disp = tr_filt.copy()
     disp["date"] = disp["date"].dt.strftime("%Y-%m-%d")
-    disp["qty"] = disp["qty"].apply(lambda x: f"{x:,.4f}")
+    disp["qty_int"] = disp["qty_int"].apply(lambda x: f"{x:,}")
     disp["price"] = disp["price"].apply(lambda x: f"${x:.4f}")
     disp["pnl_scaled"] = disp["pnl_scaled"].apply(lambda x: f"${x:+,.2f}")
-    disp = disp.drop(columns=["pnl"]).rename(columns={
+    disp = disp.drop(columns=["pnl", "qty"]).rename(columns={
         "date": "날짜", "strategy": "Sub-strategy", "leg": "방향",
-        "ticker": "Ticker", "action": "Action", "qty": "수량",
+        "ticker": "Ticker", "action": "Action", "qty_int": "수량 (정수, 시드 환산)",
         "price": "체결가", "pnl_scaled": "PnL (시드 환산)", "side": "Side",
     })
     rows_per_page = 100
@@ -711,20 +721,20 @@ with tabs[5]:
 # TAB 7: BUBE Live (Alpaca paper)
 # ───────────────────────────────────────────────────────────
 with tabs[6]:
-    st.subheader("💰 BUBE Live — Alpaca Paper")
-    st.caption("BASE BUBE rotation (bube_trader.py) Alpaca paper 운영. CHAMP_NOMARGIN overlay는 백테 권고 — production 봇에 deploy 별도 작업.")
+    st.subheader("💰 BUBE V1 CHAMP_NOMARGIN — Alpaca Paper")
+    st.caption("bube_trader.py 운영 봇. VIX dynamic-k overlay가 매 진입 시 base alloc에 k_today를 곱하고 1.0으로 cap.")
 
     # ── Section A: Spec card ──
     st.markdown("""
 <div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
-  <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">🏆 V1 CHAMP_NOMARGIN Overlay (production 권고)</div>
+  <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">🏆 V1 CHAMP_NOMARGIN Overlay (운영 중)</div>
   <div style="opacity:0.92;line-height:1.7">
     <b>k_today</b> = 0.65 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0)<br>
     BASE: <b>BULL/NEUTRAL</b> 롱변기 · <b>BEAR</b> 양변기 v5 · <b>BEAR streak &gt; 90d</b> 황금변기<br>
     <b>Regime</b>: Consensus 3-SMA200 (QQQ/SPY/SMH ±2%, 2-of-3) + Fast BEAR OR (VIX9D/VIX&gt;1.05 OR SOXL 5d mom&lt;-10%), dwell=5d
   </div>
   <div style="opacity:0.75;margin-top:8px;font-size:0.88em">
-    ⚠️ 현재 Alpaca paper 봇(bube_trader.py)은 k=1.0 BASE 운영 — CHAMP_NOMARGIN overlay는 백테 권고이며 봇 deploy 대기 중.
+    ℹ️ <code>bube_trader.py</code>가 09:35 ET <code>open_stops</code>에서 VIX 조회 → k_today 계산 → 각 leg alloc × k → cap 1.0 적용 후 stop-buy 등록. margin 사용 X.
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -965,4 +975,4 @@ with tabs[6]:
     st.markdown("**🔗 Alpaca BUBE paper 계정**: https://app.alpaca.markets/paper/dashboard/overview")
     st.markdown("**🔗 GitHub Actions (bube workflows)**: https://github.com/sunghakg/yb-mdd-or-trader/actions")
     st.markdown("**🔗 cron-job.org (4 트리거)**: https://console.cron-job.org/jobs")
-    st.caption("자동 트리거: 03:25 / 03:35 / 09:55 / 10:00 HST (월-금). Telegram prefix: 🏆 BUBE V1")
+    st.caption("자동 트리거: 03:25 / 03:35 / 09:55 / 10:00 HST (월-금). Telegram prefix: 🏆 BUBE V1 CHAMP_NOMARGIN")

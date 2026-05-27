@@ -83,5 +83,5 @@ streamlit run app.py
 ## ⚠️ 운영 상태
 
 - **백테**: V1 CHAMP_NOMARGIN (이 대시보드)
-- **Alpaca paper 봇**: 현재 `bube_trader.py`는 k=1.0 BASE 운영 — CHAMP_NOMARGIN overlay deploy 별도 작업 대기
+- **Alpaca paper 봇**: `bube_trader.py`가 V1 CHAMP_NOMARGIN overlay 적용 운영 중 — 매 `open_stops` 시 VIX 조회 → k_today 계산 → 각 leg alloc × k → cap 1.0
 - **메모리**: `project_bube_overlays.md` (BUBE V1 CHAMP_NOMARGIN 검증), `feedback_idealized_models.md` (returns-stream 환상 라벨)
