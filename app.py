@@ -16,6 +16,8 @@ Bootstrap 5,000 paths: p50 Cal 2.16 / MDD -34.9% / P(MDD<-30%) = 82.0%
 5. 📅 Year-by-Year — 17년 BASE vs CHAMP 연도별
 6. 🔄 Multi-window OOS — 1y/2y/3y/4y/5y/8y/10y/15y/16y rolling
 7. 💰 BUBE Live — Alpaca paper 실시간 + regime + active sub-strategy
+8. 🆚 V2_FINAL 비교 — V1 그대로 운영, V2 백테 성과를 비교만 표시
+   (V2_FINAL = V1 × conditional VVIX × NDX/SPY RS sizing — paper 봇 미적용)
 """
 from __future__ import annotations
 import json
@@ -27,6 +29,7 @@ import streamlit as st
 
 ROOT = Path(__file__).parent / "data"
 CHAMP = ROOT / "champ_nomargin"
+V2DIR = ROOT / "v2_final"
 st.set_page_config(page_title="BUBE V1 CHAMP_NOMARGIN Dashboard", layout="wide", page_icon="🏆")
 
 # Alpaca credentials from Streamlit secrets (cloud) or env (local)
@@ -113,10 +116,27 @@ col3.metric("16y MDD", f"{H_CHAMP['MDD']:.1f}%",
 col4.metric("$100K → Final", _money(H_CHAMP['Final_mult'] * 100_000),
             f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE")
 
+# V2_FINAL 비교 헤드라인 (paper 봇 미적용, 백테 비교만)
+v2_summary = load_json(V2DIR / "summary.json")
+if v2_summary is not None:
+    H_V2 = v2_summary["V2_FINAL"]
+    st.markdown(f"""
+<div style="background:#0e1a2e;border-left:4px solid #f59e0b;padding:10px 16px;border-radius:6px;margin:8px 0 4px;color:#e5e7eb">
+  <span style="color:#f59e0b;font-weight:600">🆚 V2_FINAL 백테 비교 (paper 봇 미적용 — 운영은 V1 그대로)</span>
+  &nbsp;·&nbsp;
+  16y Cal <b>{H_V2['Calmar']:.2f}</b> (V1 {H_CHAMP['Calmar']:.2f}) &nbsp;·&nbsp;
+  CAGR <b>{H_V2['CAGR_pct']:.1f}%</b> (V1 {H_CHAMP['CAGR']:.1f}%) &nbsp;·&nbsp;
+  MDD <b>{H_V2['MDD_pct']:.1f}%</b> (V1 {H_CHAMP['MDD']:.1f}%) &nbsp;·&nbsp;
+  Final <b>{_money(H_V2['final_multiple']*100_000)}</b>
+  <span style="opacity:0.7;font-size:0.85em">&nbsp;— 자세히는 8번째 탭</span>
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown("---")
 
 tabs = st.tabs(["📊 Overview", "📋 거래 내역", "📈 Stress Tests", "🎲 Bootstrap",
-                "📅 Year-by-Year", "🔄 Multi-window OOS", "💰 BUBE Live"])
+                "📅 Year-by-Year", "🔄 Multi-window OOS", "💰 BUBE Live",
+                "🆚 V2_FINAL 비교"])
 
 # ───────────────────────────────────────────────────────────
 # TAB 1: Overview
@@ -723,6 +743,7 @@ with tabs[5]:
 with tabs[6]:
     st.subheader("💰 BUBE V1 CHAMP_NOMARGIN — Alpaca Paper")
     st.caption("bube_trader.py 운영 봇. VIX dynamic-k overlay가 매 진입 시 base alloc에 k_today를 곱하고 1.0으로 cap.")
+    st.info("ℹ️ **운영 봇 = V1 CHAMP_NOMARGIN 그대로**. V2_FINAL은 백테 비교용으로만 8번 탭에 표시 (bube_trader.py 미변경).")
 
     # ── Section A: Spec card ──
     st.markdown("""
@@ -976,3 +997,263 @@ with tabs[6]:
     st.markdown("**🔗 GitHub Actions (bube workflows)**: https://github.com/sunghakg/yb-mdd-or-trader/actions")
     st.markdown("**🔗 cron-job.org (4 트리거)**: https://console.cron-job.org/jobs")
     st.caption("자동 트리거: 03:25 / 03:35 / 09:55 / 10:00 HST (월-금). Telegram prefix: 🏆 BUBE V1 CHAMP_NOMARGIN")
+
+
+# ───────────────────────────────────────────────────────────
+# TAB 8: V2_FINAL 비교 (paper 봇 미적용, 백테 비교만)
+# ───────────────────────────────────────────────────────────
+with tabs[7]:
+    st.subheader("🆚 V2_FINAL 백테 비교")
+    st.caption("운영 봇은 V1 CHAMP_NOMARGIN 그대로 (bube_trader.py 미변경). "
+               "여기는 V2_FINAL 백테 성과를 같이 표시만 — paper 적용 없음.")
+
+    if v2_summary is None:
+        st.error("⚠️ data/v2_final/summary.json 없음. local/strategies/regime_rotation_validation/bube_v2_full_backtest 산출물 복사 필요.")
+    else:
+        SPEC_V2 = v2_summary["spec"]
+        H_V2 = v2_summary["V2_FINAL"]
+        H_V1 = v2_summary["V1"]  # V1 동일 backtest 안에서 비교 측정 (V1 CHAMP_NOMARGIN, alloc cap 1.0)
+        H_SOXL_BH = v2_summary["SOXL_buy_hold"]
+
+        # ── A. Spec card ──
+        st.markdown(f"""
+<div style="background:linear-gradient(135deg,#1f2937,#374151);padding:18px 22px;border-radius:10px;color:#f9fafb;margin:8px 0 16px">
+  <div style="font-size:1.05em;font-weight:700;margin-bottom:6px">🆚 V2_FINAL Spec (D6b conditional VVIX + T4c NDX/SPY RS sizing)</div>
+  <div style="font-family:monospace;font-size:0.9em;opacity:0.92;line-height:1.6">
+    k = 0.65 × clip(20/VIX, 0.5, 2.0)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;× (clip(90/VVIX, 0.5, 1.0) <b>if SOXL_5d_ret &lt; 0 else 1.0</b>) &nbsp;← D6b: conditional VVIX<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;× (<b>0.8 if NDX/SPY_20d_RS &lt; 0 else 1.0</b>) &nbsp;← T4c: tech leadership sizing<br>
+    alloc_today = min(k × strat_alloc, 1.0) &nbsp;← margin 사용 X (V1과 동일)
+  </div>
+  <div style="opacity:0.75;margin-top:8px;font-size:0.85em">
+    V1 대비 차이: ① SOXL 약세일 때만 VVIX vol-of-vol clip 추가, ② NDX(=QQQ)/SPY 20일 RS 음수일 때 alloc 20% throttle.
+    BASE rotation·regime detector는 V1과 완전 동일.
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+        # ── B. Headline metric grid ──
+        st.markdown("### 📊 16년 in-sample 비교 (2010-05-25 ~ 2026-05-21)")
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Calmar", f"{H_V2['Calmar']:.2f}",
+                  f"V1 {H_V1['Calmar']:.2f} · +{H_V2['Calmar']-H_V1['Calmar']:.2f}")
+        m2.metric("CAGR", f"{H_V2['CAGR_pct']:.1f}%",
+                  f"V1 {H_V1['CAGR_pct']:.1f}% · {H_V2['CAGR_pct']-H_V1['CAGR_pct']:+.1f}pp")
+        m3.metric("MDD", f"{H_V2['MDD_pct']:.1f}%",
+                  f"V1 {H_V1['MDD_pct']:.1f}% · {H_V2['MDD_pct']-H_V1['MDD_pct']:+.1f}pp")
+        m4.metric("$100K → Final", _money(H_V2["final_multiple"] * 100_000),
+                  f"V1 {_money(H_V1['final_multiple']*100_000)}")
+
+        m5, m6, m7, m8 = st.columns(4)
+        m5.metric("Sharpe", f"{H_V2['Sharpe']:.2f}",
+                  f"V1 {H_V1['Sharpe']:.2f}")
+        m6.metric("Sortino", f"{H_V2['Sortino']:.2f}",
+                  f"V1 {H_V1['Sortino']:.2f}")
+        m7.metric("Worst day", f"{H_V2['worst_day_pct']:.2f}%",
+                  f"V1 {H_V1['worst_day_pct']:.2f}%")
+        m8.metric("SOXL B&H Cal (참고)", f"{H_SOXL_BH['Calmar']:.2f}",
+                  f"MDD {H_SOXL_BH['MDD_pct']:.1f}%")
+
+        st.markdown(
+            f"💡 V2_FINAL의 핵심 효과: **CAGR은 V1과 사실상 동일** "
+            f"({H_V2['CAGR_pct']-H_V1['CAGR_pct']:+.1f}pp), **MDD를 {H_V1['MDD_pct']-H_V2['MDD_pct']:.1f}pp 개선** "
+            f"→ Calmar +{H_V2['Calmar']-H_V1['Calmar']:.2f} 상승. "
+            f"VVIX clamp {v2_summary['vvix_clamp_days_V2']}일, NDX throttle {v2_summary['ndx_throttle_days_V2']}일 발동."
+        )
+
+        st.markdown("---")
+
+        # ── C. Equity curve V1 vs V2 vs SOXL ──
+        st.markdown("### 📈 Equity Curve — V1 vs V2_FINAL vs SOXL Buy&Hold ($100K seed)")
+        @st.cache_data
+        def _load_v2_equity():
+            df = pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
+            return df
+        eq_v2 = _load_v2_equity()
+        eq_seed_col1, eq_seed_col2 = st.columns([1, 3])
+        v2_seed = eq_seed_col1.number_input(
+            "시작 자본 ($)", min_value=100, max_value=10_000_000,
+            value=100_000, step=10_000, key="v2_seed_input",
+            help="$100K 시드 백테 결과를 이 값으로 비례 환산"
+        )
+        eq_seed_col2.markdown(
+            f"<div style='padding-top:1.7em;color:#888'>"
+            f"💡 모든 $ 값이 <b>${v2_seed:,.0f}</b> 시드 기준으로 환산됩니다."
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        scale_v2 = v2_seed / 100_000.0
+        chart_v2 = pd.DataFrame({
+            "V1 ($)": eq_v2["V1"] * scale_v2,
+            "V2_FINAL ($)": eq_v2["V2_FINAL"] * scale_v2,
+            "SOXL B&H ($)": eq_v2["SOXL_buy_hold"] * scale_v2,
+        }, index=eq_v2.index)
+        st.line_chart(chart_v2, height=380)
+
+        # log scale option
+        with st.expander("📐 Log-scale 보기"):
+            log_chart = chart_v2.apply(lambda c: np.log10(c))
+            log_chart.columns = ["log10 " + c for c in chart_v2.columns]
+            st.line_chart(log_chart, height=320)
+
+        st.markdown("---")
+
+        # ── D. Yearly breakdown V1 vs V2 ──
+        st.markdown("### 📅 Year-by-Year — V1 vs V2_FINAL")
+        @st.cache_data
+        def _load_v2_yearly():
+            return pd.read_csv(V2DIR / "yearly_breakdown.csv")
+        yb = _load_v2_yearly()
+
+        rows = []
+        for _, r in yb.iterrows():
+            rows.append({
+                "Year": int(r["year"]),
+                "V1 Ret": f"{r['V1_ret']:+.1f}%",
+                "V2 Ret": f"{r['V2_FINAL_ret']:+.1f}%",
+                "Δ Ret": f"{r['V2_FINAL_ret']-r['V1_ret']:+.1f}pp",
+                "V1 MDD": f"{r['V1_mdd']:+.1f}%",
+                "V2 MDD": f"{r['V2_FINAL_mdd']:+.1f}%",
+                "Δ MDD": f"{r['V2_FINAL_mdd']-r['V1_mdd']:+.1f}pp",
+                "SOXL Ret": f"{r['SOXL_ret']:+.1f}%",
+                "SOXL MDD": f"{r['SOXL_mdd']:+.1f}%",
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        wins_mdd = (yb["V2_FINAL_mdd"] > yb["V1_mdd"]).sum()
+        wins_ret = (yb["V2_FINAL_ret"] > yb["V1_ret"]).sum()
+        avg_dmdd = (yb["V2_FINAL_mdd"] - yb["V1_mdd"]).mean()
+        avg_dret = (yb["V2_FINAL_ret"] - yb["V1_ret"]).mean()
+        total = len(yb)
+        yc1, yc2, yc3, yc4 = st.columns(4)
+        yc1.metric("총 연도", f"{total}")
+        yc2.metric("V2 MDD 우위", f"{wins_mdd}/{total}",
+                   f"{wins_mdd/total*100:.0f}%")
+        yc3.metric("V2 Ret 우위", f"{wins_ret}/{total}",
+                   f"{wins_ret/total*100:.0f}%")
+        yc4.metric("평균 ΔRet / ΔMDD", f"{avg_dret:+.1f}pp / {avg_dmdd:+.1f}pp",
+                   "MDD는 양수=V2가 덜 떨어짐")
+
+        st.markdown("### 📊 연도별 Δ MDD (V2 − V1, pp) — 양수 = V2가 덜 떨어짐")
+        ydiff = pd.DataFrame(
+            {"Δ MDD pp": (yb["V2_FINAL_mdd"] - yb["V1_mdd"]).values},
+            index=yb["year"].astype(int).values
+        )
+        st.bar_chart(ydiff, height=240)
+
+        st.markdown("---")
+
+        # ── E. Bootstrap 5,000 paths comparison ──
+        st.markdown("### 🎲 Bootstrap 5,000 paths — V1 vs V2_FINAL")
+        bp_path = V2DIR / "bootstrap.csv"
+        if bp_path.exists():
+            bp = pd.read_csv(bp_path).set_index("label")
+            v1b = bp.loc["V1"]
+            v2b = bp.loc["V2_FINAL"]
+
+            bbc1, bbc2, bbc3 = st.columns(3)
+            with bbc1:
+                st.markdown("**CAGR p50**")
+                st.metric("V2_FINAL", f"{v2b['CAGR_p50']:.1f}%",
+                          f"V1 {v1b['CAGR_p50']:.1f}%")
+            with bbc2:
+                st.markdown("**MDD p50**")
+                st.metric("V2_FINAL", f"{v2b['MDD_p50']:.1f}%",
+                          f"V1 {v1b['MDD_p50']:.1f}% · "
+                          f"{v2b['MDD_p50']-v1b['MDD_p50']:+.1f}pp")
+            with bbc3:
+                st.markdown("**Calmar p50**")
+                st.metric("V2_FINAL", f"{v2b['Cal_p50']:.2f}",
+                          f"V1 {v1b['Cal_p50']:.2f} · "
+                          f"+{v2b['Cal_p50']-v1b['Cal_p50']:.2f}")
+
+            tail_rows = pd.DataFrame({
+                "Metric": ["P(MDD<-25%)", "P(MDD<-30%)", "P(MDD<-40%)",
+                           "P(Calmar>2.5)", "P(Calmar>3.0)",
+                           "Calmar p5", "Calmar p95", "MDD p5 (꼬리 최악)"],
+                "V1": [
+                    f"{v1b['P_MDD_lt_25']*100:.1f}%",
+                    f"{v1b['P_MDD_lt_30']*100:.1f}%",
+                    f"{v1b['P_MDD_lt_40']*100:.1f}%",
+                    f"{v1b['P_Cal_gt_2_5']*100:.1f}%",
+                    f"{v1b['P_Cal_gt_3']*100:.1f}%",
+                    f"{v1b['Cal_p5']:.2f}",
+                    f"{v1b['Cal_p95']:.2f}",
+                    f"{v1b['MDD_p5']:.1f}%",
+                ],
+                "V2_FINAL": [
+                    f"{v2b['P_MDD_lt_25']*100:.1f}%",
+                    f"{v2b['P_MDD_lt_30']*100:.1f}%",
+                    f"{v2b['P_MDD_lt_40']*100:.1f}%",
+                    f"{v2b['P_Cal_gt_2_5']*100:.1f}%",
+                    f"{v2b['P_Cal_gt_3']*100:.1f}%",
+                    f"{v2b['Cal_p5']:.2f}",
+                    f"{v2b['Cal_p95']:.2f}",
+                    f"{v2b['MDD_p5']:.1f}%",
+                ],
+            })
+            st.dataframe(tail_rows, use_container_width=True, hide_index=True)
+
+            st.info(
+                f"**진짜 운영 추정치 (bootstrap p50)**: "
+                f"V2_FINAL Cal **{v2b['Cal_p50']:.2f}** / MDD **{v2b['MDD_p50']:.1f}%** "
+                f"vs V1 Cal {v1b['Cal_p50']:.2f} / MDD {v1b['MDD_p50']:.1f}%. "
+                f"P(MDD<-30%) {v1b['P_MDD_lt_30']*100:.0f}% → **{v2b['P_MDD_lt_30']*100:.0f}%**로 큰 꼬리 축소. "
+                f"단, 헤드라인 Cal 3.46은 in-sample max — forward 기대는 p50 기준."
+            )
+
+        st.markdown("---")
+
+        # ── F. Crisis comparison ──
+        st.markdown("### 📈 Crisis 비교 — V1 vs V2_FINAL")
+        cp = V2DIR / "crisis.csv"
+        if cp.exists():
+            cr = pd.read_csv(cp)
+            disp = cr.copy()
+            disp["v1_ret"] = disp["v1_ret"].apply(lambda x: f"{x:+.1f}%")
+            disp["v2_ret"] = disp["v2_ret"].apply(lambda x: f"{x:+.1f}%")
+            disp["v1_mdd"] = disp["v1_mdd"].apply(lambda x: f"{x:+.1f}%")
+            disp["v2_mdd"] = disp["v2_mdd"].apply(lambda x: f"{x:+.1f}%")
+            disp["dret_pp"] = disp["dret_pp"].apply(lambda x: f"{x:+.2f}pp")
+            disp["dmdd_pp"] = disp["dmdd_pp"].apply(lambda x: f"{x:+.2f}pp")
+            disp.columns = ["Event", "V1 Ret", "V2 Ret", "V1 MDD", "V2 MDD",
+                            "Δ Ret", "Δ MDD (양수=V2가 덜 떨어짐)"]
+            st.dataframe(disp, use_container_width=True, hide_index=True)
+
+            n_mdd_win = (cr["dmdd_pp"] > 0).sum()
+            n_tot = len(cr)
+            st.success(f"✅ Crisis {n_mdd_win}/{n_tot}건에서 V2가 MDD 우위, 평균 Δ MDD {cr['dmdd_pp'].mean():+.2f}pp.")
+
+        st.markdown("---")
+
+        # ── G. Shuffle test ──
+        st.markdown("### 🧪 Shuffle Test — D6b VVIX + T4c NDX 신호 진위 (메모리 [[project-v2-final-2026-05-27]])")
+        sp = V2DIR / "shuffle.csv"
+        if sp.exists():
+            sh = pd.read_csv(sp).iloc[0]
+            sc1, sc2, sc3 = st.columns(3)
+            sc1.metric("VVIX 셔플 z-score", f"{sh['vvix_z']:.2f}",
+                       f"p={sh['vvix_p_value']:.3f}")
+            sc2.metric("NDX/SPY 셔플 z-score", f"{sh['ndx_z']:.2f}",
+                       f"p={sh['ndx_p_value']:.3f}")
+            sc3.metric("Both 셔플 z-score", f"{sh['both_z']:.2f}",
+                       f"p={sh['both_p_value']:.3f}")
+            st.caption("100회 셔플 대비. 실제 신호 Cal vs 셔플 분포 p50의 표준편차 단위 거리 — z>2.0 = 통계적으로 진짜 신호.")
+
+        st.markdown("---")
+
+        # ── H. Honest weaknesses ──
+        st.markdown("### ⚠️ V2_FINAL 약점 (메모리에 기록된 정직한 평가)")
+        st.markdown("""
+- **M9 DSR 37-trials 미통과** — VVIX C 그리드 + RS lookback 그리드 등 시도 횟수가 늘면 Deflated Sharpe Ratio 통과 못 함. M3 shuffle z=3.09 p=0.000이 진위의 1차 증거.
+- **2021 melt-up −26pp** — VIX/VVIX 모두 진정 상태에서 NDX/SPY throttle이 false positive 발동하면 풀로딩 못 함. 강세장 일부 upside 놓침.
+- **A4 VVIX baseline drift** — VVIX Q1→Q3 평균 88→108로 13년간 상승. 임계값 90이 시간에 따라 다른 의미. 향후 rolling-baseline 검토 필요.
+- **In-sample 16년 동일 기간 fit** — V1, V2 모두 SOXL 상장 이후 전체 기간 학습. 진짜 OOS 아님 (S1d는 walkforward Q3/Q4 alpha decay 있었음 → V2가 그걸 해결한 증거가 in-sample 한정).
+- **운영 자본 cap** — 헤드라인은 무한 자본 가정. SOXL 2010-2016 ADV $7-30M 시기 슬립 반영 시 V1 16년 CAGR 78%→34% 환상으로 메모리 [[project-bube-reality-followups-2026-05-27]] 기록. V2도 동일 슬립 영향 받음.
+""")
+
+        st.warning(
+            "🚦 **운영 결정**: V2_FINAL은 paper 봇에 적용되지 **않습니다**. "
+            "위 데이터는 V1과 V2의 백테 정합 비교 자료일 뿐. "
+            "운영은 V1 CHAMP_NOMARGIN 그대로 (bube_trader.py 미변경)."
+        )
