@@ -129,10 +129,31 @@ def _read_last_updated():
     return min(timestamps) if timestamps else None
 
 last_updated = _read_last_updated()
-if last_updated:
-    st.caption(f"📅 **백테 자동 갱신**: 마지막 업데이트 `{last_updated}` "
-               f"(매일 11:00 HST = 17:00 ET, NYSE 마감 1h 후, "
-               f"`bube_v2_daily_update.py` Task Scheduler)")
+
+# 백테 데이터 endpoint 표시 (사용자가 옛 build 보고 있는지 즉시 확인 가능)
+def _read_data_endpoint():
+    try:
+        import csv as _csv
+        with open(CHAMP / "equity_curves.csv", encoding="utf-8") as f:
+            reader = _csv.reader(f)
+            last_row = None
+            for row in reader:
+                if row:
+                    last_row = row
+            return last_row[0] if last_row else None
+    except Exception:
+        return None
+
+data_end = _read_data_endpoint()
+if last_updated or data_end:
+    parts = []
+    if data_end:
+        parts.append(f"백테 데이터 끝: **`{data_end}`**")
+    if last_updated:
+        parts.append(f"마지막 갱신: `{last_updated}`")
+    st.caption("📅 " + " · ".join(parts) +
+               " — GitHub Actions cloud (평일 21:15 UTC = 17:15 ET = 11:15 HST). "
+               "옛 데이터가 보이면 `Ctrl+Shift+R`로 강력 새로고침 또는 Streamlit Cloud manage 페이지에서 Reboot.")
 
 # V2_FINAL 비교 헤드라인 (paper 봇 미적용, 백테 비교만)
 v2_summary = load_json(V2DIR / "summary.json")
@@ -532,8 +553,20 @@ with tabs[1]:
                f"{tr_filt['date'].min().date()} → {tr_filt['date'].max().date()}"
                if len(tr_filt) else "—")
 
-    # Display
-    disp = tr_filt.copy()
+    # Display — 성능 최적화: page slice 먼저, slice된 ≤100 rows에만 format apply
+    # (이전: tr_filt 전체 5,000+ rows × 4 lambda format → 매 rerun ~20,000 호출, 느림)
+    rows_per_page = 100
+    n_total = len(tr_filt)
+    n_pages = max(1, (n_total + rows_per_page - 1) // rows_per_page)
+    page = st.number_input(
+        f"Page (총 {n_total:,} rows, {n_pages} pages)",
+        min_value=1, max_value=n_pages, value=1, key="champ_trade_page"
+    ) if n_pages > 1 else 1
+    start_idx = (page - 1) * rows_per_page
+    end_idx = start_idx + rows_per_page
+
+    # Slice ≤100 rows BEFORE format apply (큰 성능 차이)
+    disp = tr_filt.iloc[start_idx:end_idx].copy()
     disp["date"] = disp["date"].dt.strftime("%Y-%m-%d")
     disp["qty_int"] = disp["qty_int"].apply(lambda x: f"{x:,}")
     disp["price"] = disp["price"].apply(lambda x: f"${x:.4f}")
@@ -543,23 +576,19 @@ with tabs[1]:
         "ticker": "Ticker", "action": "Action", "qty_int": "수량 (정수, 시드 환산)",
         "price": "체결가", "pnl_scaled": "PnL (시드 환산)", "side": "Side",
     })
-    rows_per_page = 100
-    n_pages = max(1, (len(disp) + rows_per_page - 1) // rows_per_page)
-    page = st.number_input(
-        f"Page (총 {len(disp):,} rows, {n_pages} pages)",
-        min_value=1, max_value=n_pages, value=1, key="champ_trade_page"
-    ) if n_pages > 1 else 1
-    start_idx = (page - 1) * rows_per_page
-    st.dataframe(disp.iloc[start_idx:start_idx + rows_per_page],
-                 use_container_width=True, hide_index=True, height=400)
+    st.dataframe(disp, use_container_width=True, hide_index=True, height=400)
 
-    # CSV download
-    st.download_button(
-        label=f"💾 CHAMP_NOMARGIN trades CSV 다운로드 ({len(tr_filt):,} rows)",
-        data=tr_filt.to_csv(index=False).encode("utf-8-sig"),
-        file_name=f"champ_nomargin_trades_{d_from}_{d_to}.csv",
-        mime="text/csv", key="champ_dl"
-    )
+    # CSV download — generate only when user clicks (lazy via session_state)
+    # (이전: 매 rerun마다 tr_filt 전체 to_csv encode → 5,000+ rows 매번 직렬화)
+    if st.button(f"💾 CSV 다운로드 준비 ({n_total:,} rows)", key="champ_dl_prep"):
+        st.session_state["champ_csv_ready"] = tr_filt.to_csv(index=False).encode("utf-8-sig")
+    if "champ_csv_ready" in st.session_state:
+        st.download_button(
+            label=f"⬇️ champ_nomargin_trades_{d_from}_{d_to}.csv 받기",
+            data=st.session_state["champ_csv_ready"],
+            file_name=f"champ_nomargin_trades_{d_from}_{d_to}.csv",
+            mime="text/csv", key="champ_dl"
+        )
 
 
 # ───────────────────────────────────────────────────────────
