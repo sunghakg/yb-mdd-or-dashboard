@@ -823,8 +823,29 @@ with tabs[6]:
 </div>
 """, unsafe_allow_html=True)
 
+    # ── Lazy-load gate (성능 최적화: Tab 7 진입 시에만 yfinance+Alpaca 호출) ──
+    if "live_loaded" not in st.session_state:
+        st.session_state["live_loaded"] = False
+
+    lazy_col1, lazy_col2 = st.columns([2, 1])
+    with lazy_col1:
+        st.markdown("**Live 데이터** (regime/VIX/Alpaca paper 계정) — 클릭 시 로드")
+    with lazy_col2:
+        if st.button("🔄 Live 로드 / 새로고침", key="load_live_btn", use_container_width=True):
+            st.session_state["live_loaded"] = True
+            # 새로고침 시 캐시도 무효화
+            st.cache_data.clear()
+
+    if not st.session_state["live_loaded"]:
+        st.info(
+            "ℹ️ **빠른 로딩을 위해 Live 데이터는 클릭 시에만 로드됩니다.** "
+            "regime 계산 (yfinance 5종목 × 600일) + Alpaca paper 계정 조회는 위 버튼을 누르면 시작됩니다. "
+            "백테 데이터 (Tab 1-6, 8, 9)는 이 버튼과 무관 — 이미 표시됨."
+        )
+        st.stop()
+
     # ── Section B: Today's regime + active sub-strategy + k_today ──
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=1800)  # 30분 캐시 (regime은 하루 단위로 변함)
     def _compute_regime_state():
         try:
             import yfinance as yf
@@ -964,7 +985,7 @@ with tabs[6]:
     st.markdown("---")
 
     # ── Section C: Alpaca paper account live ──
-    @st.cache_data(ttl=60)
+    @st.cache_data(ttl=300)  # 5분 캐시 (Alpaca 호출 줄임)
     def _fetch_alpaca():
         try:
             from alpaca.trading.client import TradingClient
