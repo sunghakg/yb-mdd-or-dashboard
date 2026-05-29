@@ -293,51 +293,55 @@ with tabs[1]:
     )
 
     # ── Load equity curves ──
-    @st.cache_data
-    def _load_eq():
-        eq = pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
-        return eq
+    # 캐시 키에 file mtime 추가: 파일 갱신되면 자동 invalidate (Streamlit Cloud 캐시 stale 해결)
+    def _mtime(p):
+        try: return p.stat().st_mtime
+        except Exception: return 0
 
     @st.cache_data
-    def _load_daily():
-        d = pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
-        return d
+    def _load_eq(_mtime_key):
+        return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
 
     @st.cache_data
-    def _load_v2_for_overlay():
-        """V2_FINAL equity from data/v2_final/equity_paths.csv (daily auto-updated).
-        Rebase to start-of-period of CHAMP_NOMARGIN so all 3 lines start at same point."""
+    def _load_daily(_mtime_key):
+        return pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
+
+    @st.cache_data
+    def _load_v2_for_overlay(_mtime_key):
         if not (V2DIR / "equity_paths.csv").exists():
             return None
-        df = pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
-        return df
+        return pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
 
-    eq_all = _load_eq()
-    daily_all = _load_daily()
-    eq_v2_all = _load_v2_for_overlay()
+    eq_all = _load_eq(_mtime(CHAMP / "equity_curves.csv"))
+    daily_all = _load_daily(_mtime(CHAMP / "daily.csv"))
+    eq_v2_all = _load_v2_for_overlay(_mtime(V2DIR / "equity_paths.csv"))
 
     # ── Date range picker ──
     bt_min_d = eq_all.index.min().date()
     bt_max_d = eq_all.index.max().date()
+    # 기본값: 최근 3개월 (16년 전체보다 ~67× 빠름). 사용자가 preset/reset으로 전체 조회 가능.
+    default_from = max(bt_min_d, (pd.Timestamp(bt_max_d) - pd.Timedelta(days=90)).date())
 
-    st.markdown("### 🗓 자유 시드/기간 — CHAMP_NOMARGIN 재집계")
+    st.markdown(f"### 🗓 자유 시드/기간 — CHAMP_NOMARGIN 재집계")
+    st.caption(f"백테 데이터: `{bt_min_d}` ~ **`{bt_max_d}`**. 기본값은 최근 3개월 (빠른 로딩). "
+               f"16년 전체 보고 싶으면 아래 '16년 전체' 버튼 클릭.")
 
     def _apply_preset(st_d, en_d):
         st.session_state["champ_from"] = pd.Timestamp(st_d).date()
         st.session_state["champ_to"] = pd.Timestamp(en_d).date()
 
     def _reset_dates():
-        st.session_state["champ_from"] = bt_min_d
+        st.session_state["champ_from"] = default_from
         st.session_state["champ_to"] = bt_max_d
 
     d1, d2, d3 = st.columns([2, 2, 1])
     with d1:
-        d_from = st.date_input("From", value=bt_min_d, min_value=bt_min_d, max_value=bt_max_d, key="champ_from")
+        d_from = st.date_input("From", value=default_from, min_value=bt_min_d, max_value=bt_max_d, key="champ_from")
     with d2:
         d_to = st.date_input("To", value=bt_max_d, min_value=bt_min_d, max_value=bt_max_d, key="champ_to")
     with d3:
         st.markdown("&nbsp;")
-        st.button("Reset", on_click=_reset_dates, key="champ_reset")
+        st.button("최근 3개월", on_click=_reset_dates, key="champ_reset")
 
     st.markdown("**빠른 선택**")
     pcols = st.columns(8)
@@ -504,12 +508,12 @@ with tabs[1]:
     st.markdown("### 📒 CHAMP_NOMARGIN 거래 로그")
 
     @st.cache_data
-    def _load_trades():
+    def _load_trades(_mtime_key):
         t = pd.read_csv(CHAMP / "trades_champ.csv")
         t["date"] = pd.to_datetime(t["date"])
         return t
 
-    trades_all = _load_trades()
+    trades_all = _load_trades(_mtime(CHAMP / "trades_champ.csv"))
 
     # Filters
     tf1, tf2, tf3 = st.columns([2, 1, 1])
@@ -1146,7 +1150,7 @@ with tabs[7]:
 """, unsafe_allow_html=True)
 
         # ── B. Headline metric grid ──
-        st.markdown("### 📊 16년 in-sample 비교 (2010-05-25 ~ 2026-05-21)")
+        st.markdown(f"### 📊 In-sample 비교 ({H_V2.get('start','?')} ~ {H_V2.get('end','?')}, {H_V2.get('years','?')}년)")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Calmar", f"{H_V2['Calmar']:.2f}",
                   f"V1 {H_V1['Calmar']:.2f} · +{H_V2['Calmar']-H_V1['Calmar']:.2f}")
@@ -1178,11 +1182,14 @@ with tabs[7]:
 
         # ── C. Equity curve V1 vs V2 vs SOXL ──
         st.markdown("### 📈 Equity Curve — V1 vs V2_FINAL vs SOXL Buy&Hold ($100K seed)")
+        def _mtime_t8(p):
+            try: return p.stat().st_mtime
+            except Exception: return 0
+
         @st.cache_data
-        def _load_v2_equity():
-            df = pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
-            return df
-        eq_v2 = _load_v2_equity()
+        def _load_v2_equity(_mtime_key):
+            return pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
+        eq_v2 = _load_v2_equity(_mtime_t8(V2DIR / "equity_paths.csv"))
         eq_seed_col1, eq_seed_col2 = st.columns([1, 3])
         v2_seed = eq_seed_col1.number_input(
             "시작 자본 ($)", min_value=100, max_value=10_000_000,
@@ -1214,9 +1221,9 @@ with tabs[7]:
         # ── D. Yearly breakdown V1 vs V2 ──
         st.markdown("### 📅 Year-by-Year — V1 vs V2_FINAL")
         @st.cache_data
-        def _load_v2_yearly():
+        def _load_v2_yearly(_mtime_key):
             return pd.read_csv(V2DIR / "yearly_breakdown.csv")
-        yb = _load_v2_yearly()
+        yb = _load_v2_yearly(_mtime_t8(V2DIR / "yearly_breakdown.csv"))
 
         rows = []
         for _, r in yb.iterrows():
@@ -1388,24 +1395,27 @@ with tabs[8]:
         st.error("data/v2_final/signal_diagnostics.csv 없음. daily update 한 번 돌려야 함: "
                  "`python local/strategies/bube_v2_daily_update.py`")
     else:
+        def _mtime_j(p):
+            try: return p.stat().st_mtime
+            except Exception: return 0
+
         @st.cache_data
-        def _load_diag():
+        def _load_diag(_mtime_key):
             return pd.read_csv(diag_path, parse_dates=["date"])
 
         @st.cache_data
-        def _load_eq_for_journal():
+        def _load_eq_for_journal(_mtime_key):
             return pd.read_csv(eq_path, parse_dates=["date"], index_col="date")
 
         @st.cache_data
-        def _load_trades_journal():
+        def _load_trades_journal(_mtime_key):
             if not trades_path.exists():
                 return None
-            t = pd.read_csv(trades_path, parse_dates=["date"])
-            return t
+            return pd.read_csv(trades_path, parse_dates=["date"])
 
-        diag = _load_diag()
-        eq_j = _load_eq_for_journal()
-        trades_j = _load_trades_journal()
+        diag = _load_diag(_mtime_j(diag_path))
+        eq_j = _load_eq_for_journal(_mtime_j(eq_path))
+        trades_j = _load_trades_journal(_mtime_j(trades_path))
 
         # ── A. Period selector ──
         n_days_opts = {"최근 20거래일": 20, "최근 1달 (30일)": 30,
