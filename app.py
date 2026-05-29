@@ -1477,15 +1477,23 @@ with tabs[8]:
         })
         st.dataframe(view, use_container_width=True, hide_index=True, height=480)
 
-        # CSV download
-        csv_data = view.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            "💾 매매일지 CSV 다운로드",
-            data=csv_data,
-            file_name=f"bube_journal_{diag_recent['date'].iloc[0].date()}_{diag_recent['date'].iloc[-1].date()}.csv",
-            mime="text/csv",
-            key="journal_dl"
-        )
+        # CSV download — lazy 처리 (Tab 2와 동일 패턴)
+        # 이전: 매 rerun마다 to_csv encode + st.download_button 등록
+        #   → Streamlit Cloud 서버 연결 일시 단절 시 'not connected to a server!' 에러 발생
+        # 이후: '준비' 버튼 클릭 시에만 encode → session_state 저장 → download_button 표시
+        d_start = diag_recent['date'].iloc[0].date()
+        d_end = diag_recent['date'].iloc[-1].date()
+        if st.button(f"💾 매매일지 CSV 준비 ({len(view):,} rows)", key="journal_dl_prep"):
+            st.session_state["journal_csv_ready"] = view.to_csv(index=False).encode("utf-8-sig")
+            st.session_state["journal_csv_range"] = f"{d_start}_{d_end}"
+        if "journal_csv_ready" in st.session_state:
+            st.download_button(
+                f"⬇️ bube_journal_{st.session_state.get('journal_csv_range','')}.csv 받기",
+                data=st.session_state["journal_csv_ready"],
+                file_name=f"bube_journal_{st.session_state.get('journal_csv_range', f'{d_start}_{d_end}')}.csv",
+                mime="text/csv",
+                key="journal_dl"
+            )
 
         st.markdown("---")
 
