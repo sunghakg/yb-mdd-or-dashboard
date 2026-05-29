@@ -116,6 +116,24 @@ col3.metric("16y MDD", f"{H_CHAMP['MDD']:.1f}%",
 col4.metric("$100K → Final", _money(H_CHAMP['Final_mult'] * 100_000),
             f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE")
 
+# Last update marker (daily auto-push from bube_v2_daily_update.py)
+def _read_last_updated():
+    candidates = [V2DIR / "last_update_at.txt", CHAMP / "last_update_at.txt"]
+    timestamps = []
+    for p in candidates:
+        if p.exists():
+            try:
+                timestamps.append(p.read_text().strip())
+            except Exception:
+                pass
+    return min(timestamps) if timestamps else None
+
+last_updated = _read_last_updated()
+if last_updated:
+    st.caption(f"📅 **백테 자동 갱신**: 마지막 업데이트 `{last_updated}` "
+               f"(매일 11:00 HST = 17:00 ET, NYSE 마감 1h 후, "
+               f"`bube_v2_daily_update.py` Task Scheduler)")
+
 # V2_FINAL 비교 헤드라인 (paper 봇 미적용, 백테 비교만)
 v2_summary = load_json(V2DIR / "summary.json")
 if v2_summary is not None:
@@ -136,7 +154,7 @@ st.markdown("---")
 
 tabs = st.tabs(["📊 Overview", "📋 거래 내역", "📈 Stress Tests", "🎲 Bootstrap",
                 "📅 Year-by-Year", "🔄 Multi-window OOS", "💰 BUBE Live",
-                "🆚 V2_FINAL 비교"])
+                "🆚 V2_FINAL 비교", "📔 최근 1달 매매일지"])
 
 # ───────────────────────────────────────────────────────────
 # TAB 1: Overview
@@ -264,8 +282,18 @@ with tabs[1]:
         d = pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
         return d
 
+    @st.cache_data
+    def _load_v2_for_overlay():
+        """V2_FINAL equity from data/v2_final/equity_paths.csv (daily auto-updated).
+        Rebase to start-of-period of CHAMP_NOMARGIN so all 3 lines start at same point."""
+        if not (V2DIR / "equity_paths.csv").exists():
+            return None
+        df = pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
+        return df
+
     eq_all = _load_eq()
     daily_all = _load_daily()
+    eq_v2_all = _load_v2_for_overlay()
 
     # ── Date range picker ──
     bt_min_d = eq_all.index.min().date()
@@ -367,12 +395,35 @@ with tabs[1]:
                        f"{as_.iloc[0]:.0f}% of period" if len(as_) else "—")
 
         # ── Equity curve ──
-        st.markdown(f"#### 📈 Equity Curve — ${user_seed:,.0f} 시드 기준 (CHAMP vs BASE)")
-        chart_period = pd.DataFrame({
-            "CHAMP_NOMARGIN ($)": eq_user_champ.values,
+        st.markdown(f"#### 📈 Equity Curve — ${user_seed:,.0f} 시드 기준 (CHAMP vs BASE vs V2_FINAL)")
+        chart_dict = {
+            "V1 CHAMP_NOMARGIN ($)": eq_user_champ.values,
             "BASE k=0.65 ($)": eq_user_base.values,
-        }, index=eq_period.index)
+        }
+        chart_index = eq_period.index
+
+        # V2_FINAL overlay (rebase to V1 start-of-period for fair comparison)
+        if eq_v2_all is not None and "V2_FINAL" in eq_v2_all.columns:
+            v2_period = eq_v2_all.loc[pd.Timestamp(d_from):pd.Timestamp(d_to)]
+            if len(v2_period) >= 2:
+                v2_seed_in = float(v2_period["V2_FINAL"].iloc[0])
+                scale_v2_for_overlay = user_seed / v2_seed_in
+                v2_user = v2_period["V2_FINAL"] * scale_v2_for_overlay
+                # align indices (V2 file may extend past CHAMP file by daily updates)
+                v2_aligned = v2_user.reindex(chart_index).ffill()
+                chart_dict["V2_FINAL ($)"] = v2_aligned.values
+
+        chart_period = pd.DataFrame(chart_dict, index=chart_index)
         st.line_chart(chart_period, height=360)
+
+        if eq_v2_all is not None:
+            v2_end = eq_v2_all.index.max().date()
+            v1_end = eq_period.index.max().date()
+            if v2_end > v1_end:
+                st.caption(
+                    f"ℹ️ V1/BASE 데이터는 `{v1_end}`까지, V2 데이터는 `{v2_end}`까지 "
+                    f"(daily 자동 갱신). V1 backtest도 함께 갱신되지만 위 차트는 선택 기간 끝점이 V1 데이터에 묶여있음."
+                )
 
         # ── k_today / VIX scale 분포 ──
         with st.expander("📊 선택 기간 내 k_today / VIX scale / 활성 alloc 분포"):
@@ -628,22 +679,34 @@ with tabs[4]:
     if yp.exists():
         y = pd.read_csv(yp)
 
+        # Load V2 yearly for column overlay (daily-updated source)
+        v2_yearly = None
+        v2_yp = V2DIR / "yearly_breakdown.csv"
+        if v2_yp.exists():
+            v2_yearly = pd.read_csv(v2_yp).set_index("year")
+
         # Build display
         rows = []
         for _, r in y.iterrows():
+            yr_int = int(r["year"])
+            v2_ret = v2_yearly.loc[yr_int, "V2_FINAL_ret"] if (v2_yearly is not None and yr_int in v2_yearly.index) else None
+            v2_mdd = v2_yearly.loc[yr_int, "V2_FINAL_mdd"] if (v2_yearly is not None and yr_int in v2_yearly.index) else None
             rows.append({
-                "Year": int(r["year"]),
+                "Year": yr_int,
                 "BASE Ret": f"{r['BASE_ret_%']:+.1f}%",
                 "CHAMP Ret": f"{r['CHAMP_ret_%']:+.1f}%",
-                "Δ Ret": f"{r['Δ_ret_pp']:+.1f}pp",
+                "V2 Ret": f"{v2_ret:+.1f}%" if v2_ret is not None and not pd.isna(v2_ret) else "—",
+                "Δ Ret (CHAMP-BASE)": f"{r['Δ_ret_pp']:+.1f}pp",
                 "BASE MDD": f"{r['BASE_mdd_%']:+.1f}%",
                 "CHAMP MDD": f"{r['CHAMP_mdd_%']:+.1f}%",
-                "Δ MDD": f"{r['Δ_mdd_pp']:+.2f}pp",
-                "BASE Sharpe": f"{r['BASE_sharpe']:.2f}",
+                "V2 MDD": f"{v2_mdd:+.1f}%" if v2_mdd is not None and not pd.isna(v2_mdd) else "—",
+                "Δ MDD (CHAMP-BASE)": f"{r['Δ_mdd_pp']:+.2f}pp",
                 "CHAMP Sharpe": f"{r['CHAMP_sharpe']:.2f}",
                 "CHAMP End $": _money(r["CHAMP_end_$"]),
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        if v2_yearly is not None:
+            st.caption("ℹ️ V2 Ret/MDD 컬럼은 data/v2_final/yearly_breakdown.csv (daily 자동 갱신).")
 
         # Summary
         wins_ret = (y["Δ_ret_pp"] > 0).sum()
@@ -1257,3 +1320,224 @@ with tabs[7]:
             "위 데이터는 V1과 V2의 백테 정합 비교 자료일 뿐. "
             "운영은 V1 CHAMP_NOMARGIN 그대로 (bube_trader.py 미변경)."
         )
+
+
+# ───────────────────────────────────────────────────────────
+# TAB 9: 최근 1달 매매일지 (signal_diagnostics + trade_log_enriched)
+# ───────────────────────────────────────────────────────────
+with tabs[8]:
+    st.subheader("📔 최근 1달 매매일지 — 일별 신호값 + 산식 검증")
+    st.caption("data/v2_final/signal_diagnostics.csv (daily 자동 갱신). 각 거래일에 백테가 계산한 모든 신호값과 "
+               "k_today 도출 과정을 표시. 사용자가 직접 산식 검증 가능.")
+
+    diag_path = V2DIR / "signal_diagnostics.csv"
+    eq_path = V2DIR / "equity_paths.csv"
+    trades_path = V2DIR / "trade_log_enriched.csv"
+
+    if not diag_path.exists():
+        st.error("data/v2_final/signal_diagnostics.csv 없음. daily update 한 번 돌려야 함: "
+                 "`python local/strategies/bube_v2_daily_update.py`")
+    else:
+        @st.cache_data
+        def _load_diag():
+            return pd.read_csv(diag_path, parse_dates=["date"])
+
+        @st.cache_data
+        def _load_eq_for_journal():
+            return pd.read_csv(eq_path, parse_dates=["date"], index_col="date")
+
+        @st.cache_data
+        def _load_trades_journal():
+            if not trades_path.exists():
+                return None
+            t = pd.read_csv(trades_path, parse_dates=["date"])
+            return t
+
+        diag = _load_diag()
+        eq_j = _load_eq_for_journal()
+        trades_j = _load_trades_journal()
+
+        # ── A. Period selector ──
+        n_days_opts = {"최근 20거래일": 20, "최근 1달 (30일)": 30,
+                       "최근 60거래일": 60, "최근 90거래일": 90}
+        sel = st.radio("기간", list(n_days_opts.keys()), index=1, horizontal=True, key="journal_period")
+        n_show = n_days_opts[sel]
+
+        diag_recent = diag.tail(n_show).reset_index(drop=True)
+
+        # ── B. Summary headline ──
+        st.markdown(f"### 📊 {sel} 요약")
+        n_bull = (diag_recent["regime"] == "BULL").sum()
+        n_bear = (diag_recent["regime"] == "BEAR").sum()
+        n_neut = (diag_recent["regime"] == "NEUTRAL").sum()
+        n_vvix_gate = int(diag_recent["vvix_gate_active"].sum())
+        n_ndx_throt = int((diag_recent["ndx_scale"] < 1.0).sum())
+        mean_k = float(diag_recent["k_final"].mean())
+        mean_vix = float(diag_recent["VIX"].mean())
+
+        h1, h2, h3, h4 = st.columns(4)
+        h1.metric("Regime 분포", f"BULL {n_bull} / BEAR {n_bear} / NEUT {n_neut}",
+                  f"{len(diag_recent)}일 중")
+        h2.metric("Mean k_final (V2)", f"{mean_k:.3f}",
+                  f"VIX 평균 {mean_vix:.1f}")
+        h3.metric("VVIX gate 발동", f"{n_vvix_gate}일",
+                  f"{n_vvix_gate/len(diag_recent)*100:.0f}% of period")
+        h4.metric("NDX/SPY throttle 발동", f"{n_ndx_throt}일",
+                  f"{n_ndx_throt/len(diag_recent)*100:.0f}% of period")
+
+        st.markdown("---")
+
+        # ── C. Day-by-day table with all signal values ──
+        st.markdown("### 📋 일별 신호값 표 (V2_FINAL 기준)")
+
+        disp = diag_recent.copy()
+        # Add V1 k_final for comparison: V1 only uses VIX scale, no VVIX, no NDX
+        disp["k_V1"] = (0.65 * disp["vix_scale"]).clip(upper=1.0)
+        # V2 equity / V1 equity from equity_paths
+        eq_for_recent = eq_j.reindex(pd.to_datetime(diag_recent["date"]))
+        disp["V1_equity"] = eq_for_recent["V1"].values
+        disp["V2_equity"] = eq_for_recent["V2_FINAL"].values
+
+        # Format display
+        view = pd.DataFrame({
+            "날짜": disp["date"].dt.strftime("%Y-%m-%d"),
+            "Regime": disp["regime"],
+            "Active": disp["active"],
+            "VIX": disp["VIX"].apply(lambda x: f"{x:.2f}"),
+            "VVIX": disp["VVIX"].apply(lambda x: f"{x:.2f}"),
+            "NDX/SPY 20d RS": disp["NDX_SPY_RS_20d"].apply(lambda x: f"{x:+.3f}"),
+            "SOXL 5d ret": disp["SOXL_5d_ret"].apply(lambda x: f"{x:+.3f}"),
+            "vix_scale": disp["vix_scale"].apply(lambda x: f"{x:.3f}"),
+            "vvix_scale": disp["vvix_scale"].apply(lambda x: f"{x:.3f}"),
+            "ndx_scale": disp["ndx_scale"].apply(lambda x: f"{x:.2f}"),
+            "k_V1 (VIX only)": disp["k_V1"].apply(lambda x: f"{x:.3f}"),
+            "k_V2 (final)": disp["k_final"].apply(lambda x: f"{x:.3f}"),
+            "V1 Equity": disp["V1_equity"].apply(lambda x: _money(x) if not pd.isna(x) else "—"),
+            "V2 Equity": disp["V2_equity"].apply(lambda x: _money(x) if not pd.isna(x) else "—"),
+        })
+        st.dataframe(view, use_container_width=True, hide_index=True, height=480)
+
+        # CSV download
+        csv_data = view.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            "💾 매매일지 CSV 다운로드",
+            data=csv_data,
+            file_name=f"bube_journal_{diag_recent['date'].iloc[0].date()}_{diag_recent['date'].iloc[-1].date()}.csv",
+            mime="text/csv",
+            key="journal_dl"
+        )
+
+        st.markdown("---")
+
+        # ── D. Per-day expander: 산식 검증 (math step-by-step) ──
+        st.markdown("### 🔍 일별 산식 검증 — 각 수치가 어떻게 산출됐는지")
+        st.caption("최근 5거래일에 대해 펼쳐서 검증 가능. k_today 산출 과정을 단계별로 표시.")
+
+        last5 = diag_recent.tail(5).iloc[::-1].reset_index(drop=True)  # newest first
+        for _, row in last5.iterrows():
+            d_str = row["date"].strftime("%Y-%m-%d")
+            with st.expander(f"📅 **{d_str}** — Regime: {row['regime']}, Active: {row['active']}, "
+                             f"k_V2 = {row['k_final']:.3f}"):
+                col_a, col_b = st.columns([1, 1])
+
+                with col_a:
+                    st.markdown("**📥 입력값 (raw signals, look-ahead safe)**")
+                    inputs = pd.DataFrame({
+                        "Signal": ["VIX (close)", "VVIX (close)", "NDX/SPY 20d RS",
+                                   "SOXL 5d return", "Regime", "Active sub-strategy",
+                                   "VVIX gate active?"],
+                        "Value": [
+                            f"{row['VIX']:.2f}",
+                            f"{row['VVIX']:.2f}",
+                            f"{row['NDX_SPY_RS_20d']:+.4f}  ({'음수' if row['NDX_SPY_RS_20d'] < 0 else '양수'})",
+                            f"{row['SOXL_5d_ret']:+.4f}  ({'음수' if row['SOXL_5d_ret'] < 0 else '양수'})",
+                            row["regime"],
+                            row["active"],
+                            "True" if row["vvix_gate_active"] else "False (SOXL 5d ret ≥ 0)",
+                        ],
+                    })
+                    st.dataframe(inputs, use_container_width=True, hide_index=True)
+
+                with col_b:
+                    st.markdown("**🧮 산식 단계별 검증**")
+                    # vix_scale verification
+                    vix_calc = max(0.5, min(2.0, 20.0 / row["VIX"]))
+                    vix_match = "✅" if abs(vix_calc - row["vix_scale"]) < 1e-6 else "❌"
+                    # vvix_scale verification
+                    if row["vvix_gate_active"] and row["VVIX"] > 0:
+                        vvix_calc = max(0.5, min(1.0, 90.0 / row["VVIX"]))
+                    else:
+                        vvix_calc = 1.0
+                    vvix_match = "✅" if abs(vvix_calc - row["vvix_scale"]) < 1e-6 else "❌"
+                    # ndx_scale verification
+                    ndx_calc = 0.8 if row["NDX_SPY_RS_20d"] < 0 else 1.0
+                    ndx_match = "✅" if abs(ndx_calc - row["ndx_scale"]) < 1e-6 else "❌"
+                    # k_V1 = 0.65 × vix_scale (capped 1.0)
+                    k_v1_calc = min(0.65 * row["vix_scale"], 1.0)
+                    # k_V2 = 0.65 × vix_scale × vvix_scale × ndx_scale (capped 1.0)
+                    k_v2_calc = min(0.65 * row["vix_scale"] * row["vvix_scale"] * row["ndx_scale"], 1.0)
+                    k_v2_match = "✅" if abs(k_v2_calc - row["k_final"]) < 1e-4 else "❌"
+
+                    st.code(f"""
+# ① vix_scale = clip(20 / VIX, 0.5, 2.0)
+vix_scale = clip(20.0 / {row['VIX']:.2f}, 0.5, 2.0)
+         = clip({20/row['VIX']:.4f}, 0.5, 2.0)
+         = {vix_calc:.4f}     [stored: {row['vix_scale']:.4f}]  {vix_match}
+
+# ② vvix_scale = (SOXL_5d < 0 인 날만 clamp 적용)
+{'#   gate active (SOXL_5d_ret = ' + f"{row['SOXL_5d_ret']:+.4f}" + ' < 0)' if row['vvix_gate_active'] else '#   gate inactive (SOXL_5d_ret = ' + f"{row['SOXL_5d_ret']:+.4f}" + ' >= 0 → scale=1.0)'}
+vvix_scale = {'clip(90 / ' + f"{row['VVIX']:.2f}" + ', 0.5, 1.0) = ' + f"{vvix_calc:.4f}" if row['vvix_gate_active'] else '1.0 (gate off)'}
+                                  [stored: {row['vvix_scale']:.4f}]  {vvix_match}
+
+# ③ ndx_scale = (NDX/SPY 20d RS < 0 → 0.8, else 1.0)
+ndx_scale = {'0.8 (RS = ' + f"{row['NDX_SPY_RS_20d']:+.4f}" + ' < 0)' if row['NDX_SPY_RS_20d'] < 0 else '1.0 (RS = ' + f"{row['NDX_SPY_RS_20d']:+.4f}" + ' >= 0)'}
+                                  [stored: {row['ndx_scale']:.2f}]  {ndx_match}
+
+# ④ k_V1 = min(0.65 × vix_scale, 1.0)        ← V1 (paper 봇 실제 사용)
+k_V1 = min(0.65 × {row['vix_scale']:.4f}, 1.0)
+     = min({0.65*row['vix_scale']:.4f}, 1.0)
+     = {k_v1_calc:.4f}
+
+# ⑤ k_V2 = min(0.65 × vix × vvix × ndx, 1.0)  ← V2 (백테 비교용)
+k_V2 = min(0.65 × {row['vix_scale']:.4f} × {row['vvix_scale']:.4f} × {row['ndx_scale']:.2f}, 1.0)
+     = min({0.65*row['vix_scale']*row['vvix_scale']*row['ndx_scale']:.4f}, 1.0)
+     = {k_v2_calc:.4f}        [stored: {row['k_final']:.4f}]  {k_v2_match}
+
+# 해석:
+# • V1 alloc 비율 = {k_v1_calc*100:.1f}%  (BUBE rotation strat_alloc × {k_v1_calc:.3f})
+# • V2 alloc 비율 = {k_v2_calc*100:.1f}%  (V1 대비 {(k_v2_calc/k_v1_calc - 1)*100:+.1f}%)
+""", language="python")
+
+                # Trades that day (if any)
+                if trades_j is not None:
+                    day_trades = trades_j[trades_j["date"].dt.date == row["date"].date()]
+                    if len(day_trades) > 0:
+                        st.markdown(f"**💸 이 날 V2 매매 ({len(day_trades)}건)**")
+                        td = day_trades[["strategy", "leg", "ticker", "action",
+                                          "qty", "price", "pnl", "side"]].copy()
+                        td["qty"] = td["qty"].apply(lambda x: f"{x:,.0f}")
+                        td["price"] = td["price"].apply(lambda x: f"${x:.4f}")
+                        td["pnl"] = td["pnl"].apply(lambda x: f"${x:+,.2f}")
+                        st.dataframe(td, use_container_width=True, hide_index=True)
+                    else:
+                        st.caption("이 날 매매 이벤트 없음 (포지션 hold).")
+
+        st.markdown("---")
+
+        # ── E. Notes ──
+        st.info("""
+**💡 산식 빠른 참조 (paper 봇 = V1 only)**
+
+```
+# Paper 봇 (bube_trader.py) — V1 CHAMP_NOMARGIN, 매일 09:35 ET open_stops에서 계산
+k_today = 0.65 × clip(20.0 / VIX, 0.5, 2.0)   # VIX dynamic
+alloc_today = min(k_today × strat_alloc, 1.0)  # margin 사용 X
+
+# V2_FINAL (백테만, paper 미적용) — V1 위에 두 신호 추가
+k_V2 = k_V1 × vvix_scale × ndx_scale
+vvix_scale = clip(90/VVIX, 0.5, 1.0) if SOXL_5d_ret < 0 else 1.0   # 약세 때만 vol-of-vol clamp
+ndx_scale  = 0.8 if NDX/SPY_20d_RS < 0 else 1.0                    # tech 약세 시 20% throttle
+```
+
+**검증 마크**: ✅ = 저장값과 재계산값 일치, ❌ = 불일치 (있으면 즉시 확인).
+""")
