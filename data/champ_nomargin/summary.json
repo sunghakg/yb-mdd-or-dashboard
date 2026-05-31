@@ -8,38 +8,38 @@
       "hi": 2.0
     },
     "alloc_cap": 1.0,
-    "period": "2010-05-25 ~ 2026-05-29"
+    "period": "2010-05-25 ~ 2026-05-31"
   },
   "headline_16y_CHAMP": {
-    "CAGR": 79.59704775226217,
+    "CAGR": 79.40412824258776,
     "MDD": -28.12736187220447,
-    "Sharpe": 1.845575920688825,
-    "Calmar": 2.829879606694298,
-    "Final_mult": 11772.692319562122
+    "Sharpe": 1.8424390368252213,
+    "Calmar": 2.8230208223351054,
+    "Final_mult": 11590.408379329047
   },
   "headline_16y_BASE": {
-    "CAGR": 55.12529506658592,
+    "CAGR": 55.00537858126526,
     "MDD": -30.877066534105758,
-    "Sharpe": 1.5354631113430244,
-    "Calmar": 1.7853151628149777,
-    "Final_mult": 1128.4650450870975
+    "Sharpe": 1.5330183659644065,
+    "Calmar": 1.7814314880109545,
+    "Final_mult": 1115.9194691722528
   },
   "bootstrap_CHAMP": {
-    "cagr_p05": 55.371726049020566,
-    "cagr_p50": 76.31713816914815,
-    "cagr_p95": 100.93047524225642,
-    "mdd_p05": -47.17550855243873,
-    "mdd_p50": -34.79508907832863,
-    "mdd_p95": -27.065446227004745,
-    "cal_p05": 1.3325147490432265,
-    "cal_p50": 2.164591908502679,
-    "cal_p95": 3.454145461644799,
-    "p_mdd_worse_than_30": 81.94,
-    "p_mdd_worse_than_40": 22.06,
+    "cagr_p05": 55.6027310637608,
+    "cagr_p50": 76.63681067570029,
+    "cagr_p95": 101.20630968699685,
+    "mdd_p05": -47.27497834836045,
+    "mdd_p50": -34.8230992528312,
+    "mdd_p95": -26.852206486604942,
+    "cal_p05": 1.337561818866823,
+    "cal_p50": 2.1803250649978816,
+    "cal_p95": 3.463480483306627,
+    "p_mdd_worse_than_30": 81.36,
+    "p_mdd_worse_than_40": 22.439999999999998,
     "p_cagr_positive": 100.0,
     "p_cagr_above_30": 100.0
   },
-  "trades_count": 5209,
+  "trades_count": 5211,
   "files": {
     "xlsx": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/bube_champ_nomargin_16yr.xlsx",
     "equity_csv": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/equity_curves.csv",
