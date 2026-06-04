@@ -217,6 +217,12 @@ BULL / NEUTRAL          → 롱변기      (SOXL only)
 BEAR                    → 양변기 v5  (SOXL+SOXS pair, F1_A6 LOC)
 BEAR streak > 90일      → 황금변기   (SOXL K-vol breakout)
 
+# 갭필터 — A안 비대칭 (2026-06-03 전환, GAP_FILTER_MODE=asym)
+롱변기·양변기롱 (SOXL)  → 갭다운(gap<-5%)만 진입 차단 (갭상승은 허용)
+양변기숏 (SOXS)         → 대칭(|gap|>5%) 차단 유지
+#   근거: 갭상승 진입은 정상보다 ~2배 좋은 진입 → 되살림. 16y Cal 2.10→2.29.
+#   롤백: GAP_FILTER_MODE=sym (전부 대칭)
+
 # Regime detector (look-ahead safe: .shift(1))
 consensus  = QQQ/SPY/SMH SMA200 ±2% 중 ≥2 합의
 fast_bear  = VIX9D/VIX > 1.05  OR  SOXL 5d mom < -10%
@@ -855,7 +861,9 @@ with tabs[5]:
 with tabs[6]:
     st.subheader("💰 BUBE V1 CHAMP_NOMARGIN — Alpaca Paper")
     st.caption("bube_trader.py 운영 봇. VIX dynamic-k overlay가 매 진입 시 base alloc에 k_today를 곱하고 1.0으로 cap.")
-    st.info("ℹ️ **운영 봇 = V1 CHAMP_NOMARGIN 그대로** (bube_trader.py 미변경).")
+    st.info("ℹ️ **운영 봇 = V1 CHAMP_NOMARGIN + A안 비대칭 갭필터** "
+            "(2026-06-03 전환, paper 라이브 검증 중). 롱변기·양변기롱은 갭다운(gap<-5%)만 차단, 양변기숏은 대칭. "
+            "헤드라인 수치는 다음 daily_backtest(일요일 V1) 갱신 후 A안 기준으로 반영. 롤백: `GAP_FILTER_MODE=sym`.")
 
     # ── Section A: Spec card ──
     st.markdown("""
@@ -864,6 +872,7 @@ with tabs[6]:
   <div style="opacity:0.92;line-height:1.7">
     <b>k_today</b> = 0.65 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0)<br>
     BASE: <b>BULL/NEUTRAL</b> 롱변기 · <b>BEAR</b> 양변기 v5 · <b>BEAR streak &gt; 90d</b> 황금변기<br>
+    <b>갭필터 A안(비대칭, 2026-06-03)</b>: 롱변기·양변기롱 갭다운만 차단 · 양변기숏 대칭<br>
     <b>Regime</b>: Consensus 3-SMA200 (QQQ/SPY/SMH ±2%, 2-of-3) + Fast BEAR OR (VIX9D/VIX&gt;1.05 OR SOXL 5d mom&lt;-10%), dwell=5d
   </div>
   <div style="opacity:0.75;margin-top:8px;font-size:0.88em">
@@ -1137,8 +1146,8 @@ with tabs[6]:
 # ───────────────────────────────────────────────────────────
 def _render_v2_tab():
     st.subheader("🆚 V2_FINAL 백테 비교")
-    st.caption("운영 봇은 V1 CHAMP_NOMARGIN 그대로 (bube_trader.py 미변경). "
-               "여기는 V2_FINAL 백테 성과를 같이 표시만 — paper 적용 없음.")
+    st.caption("운영 봇은 V1 CHAMP_NOMARGIN (2026-06-03 A안 비대칭 갭필터 적용). V2_FINAL은 paper 미적용 — "
+               "여기는 V2 백테 성과를 같이 표시만.")
 
     if v2_summary is None:
         st.error("⚠️ data/v2_final/summary.json 없음. local/strategies/regime_rotation_validation/bube_v2_full_backtest 산출물 복사 필요.")
@@ -1391,7 +1400,7 @@ def _render_v2_tab():
         st.warning(
             "🚦 **운영 결정**: V2_FINAL은 paper 봇에 적용되지 **않습니다**. "
             "위 데이터는 V1과 V2의 백테 정합 비교 자료일 뿐. "
-            "운영은 V1 CHAMP_NOMARGIN 그대로 (bube_trader.py 미변경)."
+            "운영은 V1 CHAMP_NOMARGIN (2026-06-03 A안 비대칭 갭필터 적용). V2는 미적용."
         )
 
 
