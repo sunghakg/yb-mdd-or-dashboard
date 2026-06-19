@@ -102,26 +102,30 @@ H_BOOT = champ_summary["bootstrap_CHAMP"]
 # ───────────────────────────────────────────────────────────
 st.markdown(f"""
 <div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a,#3b82f6);padding:24px 32px;border-radius:12px;color:white;margin-bottom:16px">
-  <h1 style="margin:0;font-size:1.8em">🏆 BUBE V1 CHAMP_NOMARGIN — VIX dynamic-k overlay</h1>
+  <h1 style="margin:0;font-size:1.8em">🏆 BUBE V1 — 반도체 3배 ETF(SOXL) 동적 비중 전략</h1>
   <div style="opacity:0.92;margin-top:6px">
-    BASE BUBE rotation × <b>k = 0.65 × clip(20/VIX, 0.5, 2.0)</b>, alloc cap = 1.0 (margin 사용 X)
+    레짐 감지(BULL/BEAR) → 엔진 전환 → <b>VIX 기반 비중 자동 조절</b>&nbsp;(VIX↑ 비중↓ · VIX↓ 비중↑) · Margin 미사용
   </div>
   <div style="opacity:0.75;margin-top:4px;font-size:0.92em">
-    16년 in-sample 2010-05-25 ~ 2026-05-22 · 운영 1순위 (메모리 <code>project_bube_overlays.md</code>)
+    백테스트 16년(2010-05-25 ~ 2026-05-22) · Alpaca 페이퍼 트레이딩 운영 중
   </div>
 </div>
 """, unsafe_allow_html=True)
 
 # Quick stats row — V1 CHAMP_NOMARGIN 16y headline
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("16y Calmar", f"{H_CHAMP['Calmar']:.2f}",
-            f"BASE {H_BASE['Calmar']:.2f} · +{H_CHAMP['Calmar']-H_BASE['Calmar']:.2f}")
-col2.metric("16y CAGR", f"{H_CHAMP['CAGR']:.1f}%",
-            f"BASE {H_BASE['CAGR']:.1f}% · +{H_CHAMP['CAGR']-H_BASE['CAGR']:.1f}pp")
-col3.metric("16y MDD", f"{H_CHAMP['MDD']:.1f}%",
-            f"BASE {H_BASE['MDD']:.1f}% · +{H_CHAMP['MDD']-H_BASE['MDD']:.1f}pp 개선")
-col4.metric("$100K → Final", _money(H_CHAMP['Final_mult'] * 100_000),
-            f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE")
+col1.metric("16년 Calmar", f"{H_CHAMP['Calmar']:.2f}",
+            f"BASE {H_BASE['Calmar']:.2f} · +{H_CHAMP['Calmar']-H_BASE['Calmar']:.2f}",
+            help="Calmar = CAGR ÷ |MDD|. 낙폭 대비 수익 효율성. 1.0 이상 양호, 2.0 이상 우수. BASE = VIX 조정 없이 고정 비중 운영 시.")
+col2.metric("16년 CAGR (연복리)", f"{H_CHAMP['CAGR']:.1f}%",
+            f"BASE {H_BASE['CAGR']:.1f}% · +{H_CHAMP['CAGR']-H_BASE['CAGR']:.1f}pp",
+            help="CAGR = 연평균 복리 수익률. 16년 전체를 복리로 환산했을 때의 연간 평균 수익률.")
+col3.metric("16년 MDD (최대낙폭)", f"{H_CHAMP['MDD']:.1f}%",
+            f"BASE {H_BASE['MDD']:.1f}% · {H_CHAMP['MDD']-H_BASE['MDD']:.1f}pp 개선",
+            help="MDD = Maximum Drawdown. 고점 대비 최대 하락폭. 절댓값이 작을수록 좋음.")
+col4.metric("$10만 → 최종 (16년)", _money(H_CHAMP['Final_mult'] * 100_000),
+            f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE",
+            help="$100,000 시드로 2010년부터 시작했을 때의 백테스트 최종 자산. in-sample 단일 경로 기준 (bootstrap 중앙값은 더 낮음).")
 
 # Last update marker (daily auto-push from bube_v2_daily_update.py)
 def _read_last_updated():
@@ -159,8 +163,8 @@ if last_updated or data_end:
     if last_updated:
         parts.append(f"마지막 갱신: `{last_updated}`")
     st.caption("📅 " + " · ".join(parts) +
-               " — GitHub Actions cloud (평일 21:15 UTC = 17:15 ET = 11:15 HST). "
-               "옛 데이터가 보이면 `Ctrl+Shift+R`로 강력 새로고침 또는 Streamlit Cloud manage 페이지에서 Reboot.")
+               " — 매일 자동 갱신 (평일 11:15 HST). "
+               "오래된 데이터가 보이면 `Ctrl+Shift+R` 강력 새로고침.")
 
 # V2_FINAL 비교 헤드라인 (paper 봇 미적용, 백테 비교만)
 v2_summary = load_json(V2DIR / "summary.json")
@@ -180,8 +184,8 @@ if SHOW_V2 and v2_summary is not None:
 
 st.markdown("---")
 
-_tab_labels = ["📊 Overview", "📋 거래 내역", "📈 Stress Tests", "🎲 Bootstrap",
-               "📅 Year-by-Year", "🔄 Multi-window OOS", "💰 BUBE Live"]
+_tab_labels = ["📊 전략 개요", "📋 거래 내역", "📈 위기 방어력", "🎲 확률 분포",
+               "📅 연도별 성과", "🔄 기간별 안정성", "💰 실시간 현황"]
 if SHOW_V2:
     _tab_labels.append("🆚 V2_FINAL 비교")
 _tab_labels.append("📔 최근 1달 매매일지")
@@ -193,10 +197,21 @@ IDX_JOURNAL = 8 if SHOW_V2 else 7
 # TAB 1: Overview
 # ───────────────────────────────────────────────────────────
 with tabs[0]:
-    st.subheader("BUBE V1 CHAMP_NOMARGIN Spec")
+    st.subheader("BUBE V1 — 전략 개요")
+
+    st.markdown("""
+<div style="background:#0f172a;border-left:4px solid #3b82f6;padding:14px 20px;border-radius:8px;margin-bottom:16px;color:#e2e8f0;line-height:1.9">
+<b>전략 핵심 3단계</b><br>
+<b>1️⃣ 레짐 감지</b> — QQQ·SPY·SMH 200일선 + VIX9D/SOXL 모멘텀으로 매일 시장 상태 판정 (BULL / NEUTRAL / BEAR)<br>
+<b>2️⃣ 엔진 전환</b> — BULL·NEUTRAL → <b>롱변기</b>(SOXL 단방향 매수) · BEAR → <b>양변기</b>(SOXL롱+SOXS숏) · BEAR 90일+ → <b>황금변기</b>(변동성 돌파)<br>
+<b>3️⃣ VIX 비중 조절</b> — VIX 높으면(공포) 비중 줄이고, VIX 낮으면(안정) 비중 늘림. Margin 미사용(최대 100%)
+</div>
+""", unsafe_allow_html=True)
+
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        st.code(f"""
+        with st.expander("📐 기술 스펙 보기 (코드)", expanded=False):
+         st.code(f"""
 # Strategy: V1 CHAMP_NOMARGIN (no-margin variant)
 # = BASE BUBE rotation × VIX dynamic-k overlay × alloc cap 1.0
 
@@ -231,26 +246,26 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
 """, language="python")
 
     with col_b:
-        st.markdown("### 16년 In-sample Headline")
+        st.markdown("### 16년 백테스트 결과 비교")
         ha1, ha2 = st.columns(2)
-        ha1.metric("CHAMP_NOMARGIN", "")
+        ha1.metric("V1 전략 (VIX 동적 비중)", "")
         ha1.markdown(f"""
-- **CAGR**: `{H_CHAMP['CAGR']:.2f}%`
-- **MDD**: `{H_CHAMP['MDD']:.2f}%`
-- **Sharpe**: `{H_CHAMP['Sharpe']:.2f}`
-- **Calmar**: `{H_CHAMP['Calmar']:.2f}`
-- **Final** ($100K seed): `{_money(H_CHAMP['Final_mult']*100_000)}`
+- **CAGR** (연복리): `{H_CHAMP['CAGR']:.2f}%`
+- **MDD** (최대낙폭): `{H_CHAMP['MDD']:.2f}%`
+- **Sharpe** (위험조정 수익): `{H_CHAMP['Sharpe']:.2f}`
+- **Calmar** (수익÷낙폭): `{H_CHAMP['Calmar']:.2f}`
+- **최종 자산** ($10만 시드): `{_money(H_CHAMP['Final_mult']*100_000)}`
 """)
-        ha2.metric("BASE (k=0.65 정적)", "")
+        ha2.metric("BASE (고정 비중, 비교 기준)", "")
         ha2.markdown(f"""
 - **CAGR**: `{H_BASE['CAGR']:.2f}%`
 - **MDD**: `{H_BASE['MDD']:.2f}%`
 - **Sharpe**: `{H_BASE['Sharpe']:.2f}`
 - **Calmar**: `{H_BASE['Calmar']:.2f}`
-- **Final**: `{_money(H_BASE['Final_mult']*100_000)}`
+- **최종 자산**: `{_money(H_BASE['Final_mult']*100_000)}`
 """)
 
-        st.markdown("### 검증 (2026-05-26)")
+        st.markdown("### 전략 검증 결과")
         check_data = [
             ("16y 단일 path", f"Calmar {H_CHAMP['Calmar']:.2f} vs BASE {H_BASE['Calmar']:.2f}", "✅"),
             ("Bootstrap 5,000",
@@ -266,26 +281,26 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
             st.markdown(f"**{mark} {name}** — {desc}")
 
     st.markdown("---")
-    st.markdown("### ⚠️ 약점 (정직)")
-    st.markdown("""
-    - **16년 단일 path 결과**: 단일 실현 path는 운임을 결정하지 못함. bootstrap p05 Calmar 1.30, p50 2.16, p95 3.41 spread가 진짜 추정.
-    - **MDD 꼬리 위험**: bootstrap p50 MDD -34.9%, P(MDD<-30%) = **82.0%**, P(MDD<-40%) = 22.7% — 단일 실현에서 -28%였지만 미래 path는 더 깊을 확률 ≥ 80%.
-    - **VIX9D 직접 의존 X** (overlay는 VIX만 사용) — 다만 BASE BUBE의 regime detector에는 VIX9D/VIX>1.05 fast BEAR OR가 있어 VIX9D 누락 시 약화.
-    - **margin 허용 시 CHAMP_REF Cal 2.92** — V1 CHAMP_NOMARGIN은 일부러 alloc≤1.0 제한, prop firm/IBKR Reg-T 마진 회피용.
-    - **TREND overlay (V3)는 bootstrap에서 0 alpha** — 별도 신호 추가 X, VIX scale만으로 충분.
-    """)
+    with st.expander("⚠️ 약점 및 리스크 공시 (클릭해서 펼치기)", expanded=False):
+        st.markdown("""
+- **16년 단일 경로 결과**: 과거 하나의 실현 경로. 미래는 더 나쁠 수 있음. 실제 기대치는 아래 '확률 분포' 탭의 bootstrap 중앙값 기준.
+- **MDD 꼬리 위험**: bootstrap 중앙값 MDD −34.9%, P(MDD<−30%) = **82%**, P(MDD<−40%) = 23% — 단일 경로 −28%보다 깊어질 가능성이 높음.
+- **SOXL 반도체 섹터 집중**: 단일 자산·단일 레짐으로 인해 섹터 쇼크 취약 (2022 반도체 폭락 등).
+- **운영 자본 상한 ~$14M**: ADV(일평균거래량) 대비 슬리피지 한계. 그 이상은 TWAP 필요.
+- **Margin 미사용 선택**: alloc 100% 상한 — margin 허용 시 Calmar 더 높아지나 법적·규정 리스크 회피용 설계.
+""")
 
-    st.markdown("---")
-    st.markdown("### 🚨 환상으로 확정된 매매법 (운영 사용 금지) — 메모리 `feedback_idealized_models.md`")
-    st.markdown("""
-| 매매법 | 메모리 권고치 (idealized) | trade-level 운영 추정 | verdict |
+    with st.expander("🚨 검증된 환상 매매법 (운영 절대 사용 금지)", expanded=False):
+        st.markdown("""
+아래 수치들은 **단순화된 수익률 합성** 방식으로 계산된 것으로, 실제 거래 시뮬레이션과 크게 다름.
+
+| 방식 | 과대 표기 수치 | 실제 운영 추정 | 이유 |
 |---|---|---|---|
-| CHAMP alloc sweep k=0.72 | Calmar **4.32**, MDD −20% | Calmar 1.77, MDD −34% | 8-slot returns 합성 환상 |
-| Slot rotation N7_H7 | Calmar **3.53**, MDD −11pp 개선 | 슬롯 분산 효과 0 | 동일자산 SOXL returns 곱셈 |
-| V_bear_cap escape valve (T2GE bm=90) | Calmar **6.52** (8y returns-stream) | Cal 2.40 (8y) / 1.87 (16y) trade-level, 발동 0회 | dead code, idealized cherry-pick |
+| CHAMP alloc sweep k=0.72 | Calmar **4.32**, MDD −20% | Calmar 1.77, MDD −34% | 8개 슬롯 수익률 단순 합산 |
+| Slot rotation N7_H7 | Calmar **3.53** | 분산 효과 0 | 동일 자산 SOXL 반복 합산 |
+| Escape valve T2GE bm=90 | Calmar **6.52** (8년) | Cal 1.87 (16년), 발동 0회 | 이상적 경로 cherry-pick |
 
-**규칙**: returns-stream 합성 모델 결과로 운영 alloc·slot 수·진입 빈도 권고 금지. trade-level OHLC만 인용 가능.
-**현 dashboard 모든 수치는 trade-level OHLC 16년 단일 실현 path + bootstrap 5,000 paths.**
+**원칙**: 실제 거래 시뮬레이션(trade-level OHLC) 결과만 운영 판단에 사용. 이 대시보드의 모든 수치는 해당 기준.
 """)
 
 
@@ -293,8 +308,8 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
 # TAB 2: 거래 내역
 # ───────────────────────────────────────────────────────────
 with tabs[1]:
-    st.subheader("📋 BUBE V1 CHAMP_NOMARGIN 16년 거래 내역")
-    st.caption("SOXL 상장일(2010-05-25) ~ 현재. yfinance daily OHLC. k = 0.65 × clip(20/VIX, 0.5, 2.0), alloc cap 1.0.")
+    st.subheader("📋 V1 전략 거래 내역 — 16년 전체 (2010~현재)")
+    st.caption("SOXL 상장일(2010-05-25)부터 현재까지의 백테스트 거래 내역. yfinance 일봉 OHLC 기준. 매일 자동 갱신.")
 
     # ── 사용자 정의 시작 자본 ──
     seed_col1, seed_col2 = st.columns([1, 3])
@@ -618,8 +633,8 @@ with tabs[1]:
 # TAB 3: Stress Tests
 # ───────────────────────────────────────────────────────────
 with tabs[2]:
-    st.subheader("📈 Stress Tests — 8개 Crisis × BASE vs CHAMP_NOMARGIN")
-    st.caption("CHAMP_NOMARGIN의 VIX dynamic-k overlay가 위기 구간에서 MDD를 얼마나 줄이는가.")
+    st.subheader("📈 위기 구간 방어력 — 8개 위기 × V1 vs BASE")
+    st.caption("코로나·금리쇼크 등 실제 위기 구간에서 VIX 동적 비중 조절이 낙폭을 얼마나 줄였는지 확인.")
 
     crisis_path = CHAMP / "crisis.csv"
     if crisis_path.exists():
@@ -677,32 +692,32 @@ with tabs[2]:
 # TAB 4: Bootstrap
 # ───────────────────────────────────────────────────────────
 with tabs[3]:
-    st.subheader("🎲 Bootstrap — CHAMP_NOMARGIN 5,000 paths")
-    st.caption("Stationary block bootstrap (mean block ≈ 20d). 16년 단일 path는 실현된 하나의 sample — 5,000 paths가 진짜 분포.")
+    st.subheader("🎲 확률 분포 분석 — 5,000번 시뮬레이션")
+    st.caption("과거 수익률 순서를 무작위로 섞어 5,000가지 미래 경로를 생성. 단일 16년 경로보다 실제 기대 범위를 더 정직하게 보여줌.")
 
     b = H_BOOT
 
     bc1, bc2, bc3 = st.columns(3)
-    bc1.markdown("### CAGR 분포")
-    bc1.metric("p05", f"{b['cagr_p05']:.1f}%")
-    bc1.metric("p50 (median)", f"{b['cagr_p50']:.1f}%")
-    bc1.metric("p95", f"{b['cagr_p95']:.1f}%")
+    bc1.markdown("### CAGR (연복리 수익률) 분포")
+    bc1.metric("하위 5% (최악 케이스)", f"{b['cagr_p05']:.1f}%")
+    bc1.metric("중앙값 (기대 기준)", f"{b['cagr_p50']:.1f}%")
+    bc1.metric("상위 5% (최선 케이스)", f"{b['cagr_p95']:.1f}%")
     bc1.caption(f"P(CAGR > 0) = **{b['p_cagr_positive']:.1f}%** · P(CAGR > 30%) = **{b['p_cagr_above_30']:.1f}%**")
 
-    bc2.markdown("### MDD 분포")
-    bc2.metric("p05 (최악)", f"{b['mdd_p05']:.1f}%")
-    bc2.metric("p50 (median)", f"{b['mdd_p50']:.1f}%")
-    bc2.metric("p95 (최선)", f"{b['mdd_p95']:.1f}%")
+    bc2.markdown("### MDD (최대낙폭) 분포")
+    bc2.metric("하위 5% (낙폭 최대)", f"{b['mdd_p05']:.1f}%")
+    bc2.metric("중앙값 (기대 기준)", f"{b['mdd_p50']:.1f}%")
+    bc2.metric("상위 5% (낙폭 최소)", f"{b['mdd_p95']:.1f}%")
     bc2.caption(f"P(MDD < -30%) = **{b['p_mdd_worse_than_30']:.1f}%** · P(MDD < -40%) = **{b['p_mdd_worse_than_40']:.1f}%**")
 
-    bc3.markdown("### Calmar 분포")
-    bc3.metric("p05", f"{b['cal_p05']:.2f}")
-    bc3.metric("p50 (median)", f"{b['cal_p50']:.2f}")
-    bc3.metric("p95", f"{b['cal_p95']:.2f}")
-    bc3.caption("In-sample 단일 path Calmar 2.75 → bootstrap p50 2.16. 단일 path는 약간 운 좋은 실현.")
+    bc3.markdown("### Calmar (수익÷낙폭) 분포")
+    bc3.metric("하위 5%", f"{b['cal_p05']:.2f}")
+    bc3.metric("중앙값 (운영 기대치)", f"{b['cal_p50']:.2f}")
+    bc3.metric("상위 5%", f"{b['cal_p95']:.2f}")
+    bc3.caption("16년 단일 경로 Calmar은 약간 운 좋은 실현 — 운영 기대치는 중앙값 기준으로 봐야 함.")
 
     st.markdown("---")
-    st.markdown("### 핵심 해석")
+    st.markdown("### 핵심 해석 (운영 기대 범위)")
     st.info(
         f"**진짜 운영 기대치**: bootstrap p50 = CAGR **{b['cagr_p50']:.1f}%** / MDD **{b['mdd_p50']:.1f}%** / Calmar **{b['cal_p50']:.2f}**. "
         f"단일 16년 path의 Cal 2.75는 약간 운 좋은 실현이며, 실제로는 **2.0 ~ 2.3 박스**가 base case.\n\n"
@@ -724,8 +739,8 @@ with tabs[3]:
 # TAB 5: Year-by-Year
 # ───────────────────────────────────────────────────────────
 with tabs[4]:
-    st.subheader("📅 Year-by-Year — 17년 BASE vs CHAMP_NOMARGIN")
-    st.caption("연도별 수익률/MDD/Sharpe. CHAMP_NOMARGIN이 매년 일관 우월이면 robustness 입증.")
+    st.subheader("📅 연도별 성과 — 17년 V1 vs BASE")
+    st.caption("V1이 매년 일관되게 BASE보다 우월하면 전략이 특정 기간 운으로 만들어진 게 아님을 증명. 수익률·낙폭·샤프 비교.")
 
     yp = CHAMP / "yearly.csv"
     if yp.exists():
@@ -806,8 +821,8 @@ with tabs[4]:
 # TAB 6: Multi-window OOS
 # ───────────────────────────────────────────────────────────
 with tabs[5]:
-    st.subheader("🔄 Multi-window OOS — 1y/2y/3y/4y/5y/8y/10y/15y/16y rolling")
-    st.caption("각 window 끝 시점 기준 backward N-year backtest. Calmar 일관성 = robustness 증거.")
+    st.subheader("🔄 기간별 안정성 — 1년~16년 윈도우 검증")
+    st.caption("최근 1년, 2년, 5년, 16년 등 다양한 기간에서도 V1이 일관되게 BASE보다 우월한지 확인. 특정 기간 cherry-pick이 아님을 검증.")
 
     swp = CHAMP / "summary_wide.csv"
     if swp.exists():
@@ -859,11 +874,10 @@ with tabs[5]:
 # TAB 7: BUBE Live (Alpaca paper)
 # ───────────────────────────────────────────────────────────
 with tabs[6]:
-    st.subheader("💰 BUBE V1 CHAMP_NOMARGIN — Alpaca Paper")
-    st.caption("bube_trader.py 운영 봇. VIX dynamic-k overlay가 매 진입 시 base alloc에 k_today를 곱하고 1.0으로 cap.")
-    st.info("ℹ️ **운영 봇 = V1 CHAMP_NOMARGIN + A안 비대칭 갭필터** "
-            "(2026-06-03 전환, paper 라이브 검증 중). 롱변기·양변기롱은 갭다운(gap<-5%)만 차단, 양변기숏은 대칭. "
-            "헤드라인 수치는 다음 daily_backtest(일요일 V1) 갱신 후 A안 기준으로 반영. 롤백: `GAP_FILTER_MODE=sym`.")
+    st.subheader("💰 실시간 현황 — Alpaca 페이퍼 계정")
+    st.caption("봇이 오늘 어떤 레짐으로 판정하고, 비중을 어떻게 조절했는지 실시간으로 확인.")
+    st.info("ℹ️ **현재 운영 중: V1 + 비대칭 갭필터 (2026-06-03~)** "
+            "— 롱변기·양변기 SOXL 매수는 갭다운(-5% 이상)만 차단, 갭업은 허용. 양변기 SOXS 매도는 대칭 차단 유지.")
 
     # ── Section A: Spec card ──
     st.markdown("""
@@ -1021,21 +1035,29 @@ with tabs[6]:
         active_emoji = {"longbyungi":"🚀", "yangbyungi":"🚽", "goldenbyungi":"✨"}.get(rstate["active"], "❓")
         active_name = {"longbyungi":"롱변기", "yangbyungi":"양변기 F1_A6", "goldenbyungi":"황금변기 (GOLD_ESCAPE!)"}.get(rstate["active"], rstate["active"])
 
-        st.markdown("### 🌡 Today — Regime / V1 overlay")
+        st.markdown("### 🌡 오늘 시장 상태 / V1 비중 조절")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Today Regime", rstate["regime"], f"raw {rstate['raw_regime']}")
-        c2.metric("Active Sub-Strategy", f"{active_emoji} {active_name}")
-        c3.metric("BEAR streak", f"{rstate['bear_streak']}d", f"max {rstate['max_bear']}d")
-        c4.metric("Last 7d", rstate["last7"], f"dwell {rstate['dwell']}d")
+        c1.metric("오늘 레짐", rstate["regime"], f"raw {rstate['raw_regime']}",
+                  help="BULL/NEUTRAL = 롱변기 엔진, BEAR = 양변기 엔진. dwell 5일 적용 후 값.")
+        c2.metric("현재 활성 엔진", f"{active_emoji} {active_name}",
+                  help="롱변기=SOXL 단방향 / 양변기=SOXL롱+SOXS숏 / 황금변기=변동성 돌파")
+        c3.metric("BEAR 연속 일수", f"{rstate['bear_streak']}일", f"최대 {rstate['max_bear']}일 → 황금변기",
+                  help="BEAR 레짐이 연속으로 몇 일 지속됐는지. 90일 넘으면 황금변기로 전환.")
+        c4.metric("최근 7일 레짐", rstate["last7"], f"전환 최소 유지: {rstate['dwell']}일",
+                  help="B=BEAR, U=BULL, N=NEUTRAL 순서. 가장 오른쪽이 오늘.")
 
         if rstate["vix_today"] is not None:
             v1, v2, v3, v4 = st.columns(4)
-            v1.metric("VIX today", f"{rstate['vix_today']:.2f}", "20 = base scale")
-            v2.metric("scale = clip(20/VIX, 0.5, 2.0)", f"{rstate['scale']:.3f}")
-            v3.metric("k_today = 0.65 × scale", f"{rstate['k_today']:.3f}",
-                      "BASE 0.65 대비")
-            v4.metric("alloc_max (cap 1.0)", f"{rstate['alloc_max']*100:.0f}%",
-                      "margin 사용 X")
+            v1.metric("VIX (공포지수)", f"{rstate['vix_today']:.2f}", "기준값 20",
+                      help="VIX = S&P500 30일 내재변동성. 20 이상이면 비중 축소, 이하면 비중 확대.")
+            v2.metric("비중 스케일", f"{rstate['scale']:.3f}",
+                      help="clip(20/VIX, 0.5, 2.0). VIX=10이면 2.0, VIX=20이면 1.0, VIX=40이면 0.5.")
+            v3.metric("k_today (비중 승수)", f"{rstate['k_today']:.3f}",
+                      f"기준 0.65 대비 {rstate['k_today']/0.65:.1f}×",
+                      help="0.65 × 스케일. 이 값이 전략 원래 비중에 곱해짐.")
+            v4.metric("최대 투자 비중", f"{rstate['alloc_max']*100:.0f}%",
+                      "Margin 미사용 (100% 상한)",
+                      help="k_today × 전략 비중. Margin 사용 안 하므로 100% 초과 불가.")
 
         if rstate["gold_escape"]:
             st.error("🚨 **GOLD_ESCAPE 발동 중** — BEAR streak > 90d. 황금변기 K-vol breakout으로 전환됨.")
@@ -1108,14 +1130,17 @@ with tabs[6]:
         pnl = acc["equity"] - seed
         pnl_pct = (pnl / seed) * 100
 
-        st.markdown("### 💼 Alpaca Paper Account")
+        st.markdown("### 💼 Alpaca 페이퍼 계정 현황")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Equity", f"${acc['equity']:,.2f}", f"{pnl:+,.2f} ({pnl_pct:+.2f}%)")
-        c2.metric("Cash", f"${acc['cash']:,.2f}")
-        c3.metric("Buying Power", f"${acc['buying_power']:,.2f}")
-        c4.metric("Account", acc["status"])
+        c1.metric("총 자산 (Equity)", f"${acc['equity']:,.2f}", f"{pnl:+,.2f} ({pnl_pct:+.2f}%)",
+                  help="시작 $100,000 대비 현재 총 자산.")
+        c2.metric("현금", f"${acc['cash']:,.2f}",
+                  help="포지션에 투입되지 않은 현금. 레짐이 현금 유지 중이면 높게 유지됨.")
+        c3.metric("매수 가능 금액", f"${acc['buying_power']:,.2f}",
+                  help="현재 추가로 매수 가능한 최대 금액.")
+        c4.metric("계정 상태", acc["status"])
 
-        st.markdown("### Open Positions")
+        st.markdown("### 현재 보유 포지션")
         if data["positions"]:
             pos_df = pd.DataFrame(data["positions"])
             pos_df["avg_entry"] = pos_df["avg_entry"].apply(lambda x: f"${x:.2f}")
@@ -1125,9 +1150,9 @@ with tabs[6]:
             pos_df["unrealized_pct"] = pos_df["unrealized_pct"].apply(lambda x: f"{x:+.2f}%")
             st.dataframe(pos_df, use_container_width=True, hide_index=True)
         else:
-            st.info("보유 포지션 없음 (regime 판정 후 진입 대기 또는 갭/필터 차단)")
+            st.info("보유 포지션 없음 — 레짐이 현금 유지 중이거나, 진입 조건(갭필터 등) 미충족")
 
-        st.markdown("### 오늘 주문")
+        st.markdown("### 오늘 주문 내역")
         if data["orders_today"]:
             ord_df = pd.DataFrame(data["orders_today"])
             st.dataframe(ord_df, use_container_width=True, hide_index=True)
@@ -1414,9 +1439,8 @@ if SHOW_V2:
 # TAB 9: 최근 1달 매매일지 (signal_diagnostics + trade_log_enriched)
 # ───────────────────────────────────────────────────────────
 with tabs[IDX_JOURNAL]:
-    st.subheader("📔 최근 1달 매매일지 — 일별 신호값 + 산식 검증")
-    st.caption("data/v2_final/signal_diagnostics.csv (daily 자동 갱신). 각 거래일에 백테가 계산한 모든 신호값과 "
-               "k_today 도출 과정을 표시. 사용자가 직접 산식 검증 가능.")
+    st.subheader("📔 최근 매매일지 — 일별 신호값 & 비중 산출 과정")
+    st.caption("각 거래일에 VIX·VVIX·레짐 등 신호가 어떤 값이었는지, 그 결과 비중(k_today)이 어떻게 계산됐는지 단계별로 확인.")
 
     diag_path = V2DIR / "signal_diagnostics.csv"
     eq_path = V2DIR / "equity_paths.csv"
