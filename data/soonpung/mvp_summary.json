@@ -1,0 +1,63 @@
+{
+  "strategy": "순풍(順風) MVP — regime filter × vol targeting",
+  "params": {
+    "sigma_target": 0.35,
+    "vol_window": 60,
+    "lev_max": 1.0,
+    "ma_window": 200,
+    "tsm_lookback": 252,
+    "dwell": 5,
+    "combine": "ma_only",
+    "cost_bps": 5.0
+  },
+  "overall": {
+    "순풍_MVP": {
+      "CAGR": 0.2235,
+      "MDD": -0.5206,
+      "Sharpe": 0.783,
+      "Calmar": 0.429,
+      "final_mult": 31.38
+    },
+    "SOXL_buyhold": {
+      "CAGR": 0.4562,
+      "MDD": -0.9046,
+      "Sharpe": 0.873,
+      "Calmar": 0.504,
+      "final_mult": 618.86
+    },
+    "period": [
+      "2009-05-06",
+      "2026-06-05"
+    ],
+    "n_days": 4298,
+    "avg_exposure": 0.398,
+    "annual_turnover": 2.1
+  },
+  "regime_decomposition": {
+    "bull": {
+      "days": 3279,
+      "순풍_ann_ret": 0.643,
+      "SOXL_ann_ret": 1.9948,
+      "순풍_mdd": -0.2784,
+      "SOXL_mdd": -0.6215,
+      "capture_ratio": 0.322
+    },
+    "bear": {
+      "days": 706,
+      "순풍_ann_ret": -0.3587,
+      "SOXL_ann_ret": -0.9232,
+      "순풍_mdd": -0.7095,
+      "SOXL_mdd": -0.9995,
+      "capture_ratio": 0.389
+    },
+    "sideways": {
+      "days": 313,
+      "순풍_ann_ret": -0.7596,
+      "SOXL_ann_ret": -0.4095,
+      "순풍_mdd": -0.8337,
+      "SOXL_mdd": -0.8369,
+      "capture_ratio": 1.855
+    }
+  },
+  "note": "합성 SOXL 역연장 포함 — 역사 구간은 참고용(과신 금지)."
+}

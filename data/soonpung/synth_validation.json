@@ -1,0 +1,11 @@
+{
+  "spliced_start": "2008-01-02",
+  "spliced_end": "2026-06-05",
+  "synth_days": 551,
+  "real_days": 4085,
+  "overlap_days": 4084,
+  "daily_return_corr": 0.9528,
+  "tracking_error_annual": 0.28,
+  "pass_corr_098": false,
+  "note": "합성 2008~2010 = USD(2x semis) de-lever→3x 재구성. 실제 아님, 참고용."
+}
