@@ -184,22 +184,43 @@ if SHOW_V2 and v2_summary is not None:
 
 st.markdown("---")
 
-_tab_labels = ["📊 전략 개요", "📋 거래 내역", "📈 위기 방어력", "🎲 확률 분포",
-               "📅 연도별 성과", "🔄 기간별 안정성", "💰 실시간 현황"]
-if SHOW_V2:
-    _tab_labels.append("🆚 V2_FINAL 비교")
-_tab_labels.append("📔 최근 1달 매매일지")
-_tab_labels.append("📖 용어 사전")
-tabs = st.tabs(_tab_labels)
-# V2 탭 유무에 따라 매매일지 탭 인덱스 이동 (V2 숨기면 7, 보이면 8)
-IDX_JOURNAL = 8 if SHOW_V2 else 7
-IDX_GLOSSARY = 9 if SHOW_V2 else 8
+# ── Sidebar navigation ──────────────────────────────────────
+with st.sidebar:
+    st.markdown("""
+<div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a);padding:14px 16px;border-radius:10px;color:white;margin-bottom:14px;text-align:center">
+  <div style="font-size:1.12em;font-weight:700;letter-spacing:0.02em">🏆 BUBE V1</div>
+  <div style="opacity:0.8;font-size:0.82em;margin-top:3px">SOXL 동적 비중 전략</div>
+</div>
+""", unsafe_allow_html=True)
+    _pages = [
+        "📊 백테스트",
+        "📋 거래 내역",
+        "📈 위기 방어력",
+        "🎲 확률 분포",
+        "📅 연도별 성과",
+        "🔄 기간별 안정성",
+        "💰 실시간 현황",
+        "📔 매매일지",
+        "📖 용어 사전",
+    ]
+    page = st.radio("페이지", _pages, label_visibility="collapsed")
+    st.markdown("---")
+    st.caption("📊 16년 백테 핵심 지표")
+    _sb1, _sb2 = st.columns(2)
+    _sb1.metric("Calmar", f"{H_CHAMP['Calmar']:.2f}")
+    _sb2.metric("CAGR", f"{H_CHAMP['CAGR']:.1f}%")
+    _sb1.metric("MDD", f"{H_CHAMP['MDD']:.1f}%")
+    _sb2.metric("$10K→", _money(H_CHAMP['Final_mult'] * 10_000))
+    st.markdown("---")
+    st.caption("매일 자동 갱신 (평일 11:15 HST)")
+    if last_updated:
+        st.caption(f"갱신: `{last_updated}`")
 
 # ───────────────────────────────────────────────────────────
 # TAB 1: Overview
 # ───────────────────────────────────────────────────────────
-with tabs[0]:
-    st.subheader("BUBE V1 — 전략 개요")
+if page == "📊 백테스트":
+    st.subheader("📊 백테스트 — BUBE V1 전략 개요")
 
     st.markdown("""
 <div style="background:#0f172a;border-left:4px solid #3b82f6;padding:14px 20px;border-radius:8px;margin-bottom:16px;color:#e2e8f0;line-height:1.9">
@@ -305,11 +326,35 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
 **원칙**: 실제 거래 시뮬레이션(trade-level OHLC) 결과만 운영 판단에 사용. 이 대시보드의 모든 수치는 해당 기준.
 """)
 
+    # ── 16년 자산 성장 곡선 ──────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 📈 16년 자산 성장 곡선 — $10만 시드")
+    st.caption("2010-05-25 ~ 현재. V1 CHAMP_NOMARGIN vs 고정비중 BASE. VIX 동적 비중 조절 알파를 시각적으로 확인.")
+
+    def _mtime_bt(p):
+        try: return p.stat().st_mtime
+        except Exception: return 0
+
+    @st.cache_data
+    def _load_eq_bt(_k):
+        return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
+
+    _eq_bt = _load_eq_bt(_mtime_bt(CHAMP / "equity_curves.csv"))
+    _seed_bt = 100_000.0
+    _s = float(_eq_bt["CHAMP_NOMARGIN"].iloc[0])
+    _b = float(_eq_bt["BASE"].iloc[0])
+    _eq_chart_bt = pd.DataFrame({
+        "V1 CHAMP_NOMARGIN ($)": (_eq_bt["CHAMP_NOMARGIN"] / _s * _seed_bt).values,
+        "BASE k=0.65 ($)": (_eq_bt["BASE"] / _b * _seed_bt).values,
+    }, index=_eq_bt.index)
+    st.line_chart(_eq_chart_bt, height=380)
+    st.caption("💡 거래 내역 메뉴에서 시드·기간 자유 설정 가능. 위 차트는 $10만 16년 전체 기준.")
+
 
 # ───────────────────────────────────────────────────────────
 # TAB 2: 거래 내역
 # ───────────────────────────────────────────────────────────
-with tabs[1]:
+elif page == "📋 거래 내역":
     st.subheader("📋 V1 전략 거래 내역 — 16년 전체 (2010~현재)")
     st.caption("SOXL 상장일(2010-05-25)부터 현재까지의 백테스트 거래 내역. yfinance 일봉 OHLC 기준. 매일 자동 갱신.")
 
@@ -634,7 +679,7 @@ with tabs[1]:
 # ───────────────────────────────────────────────────────────
 # TAB 3: Stress Tests
 # ───────────────────────────────────────────────────────────
-with tabs[2]:
+elif page == "📈 위기 방어력":
     st.subheader("📈 위기 구간 방어력 — 8개 위기 × V1 vs BASE")
     st.caption("코로나·금리쇼크 등 실제 위기 구간에서 VIX 동적 비중 조절이 낙폭을 얼마나 줄였는지 확인.")
 
@@ -693,7 +738,7 @@ with tabs[2]:
 # ───────────────────────────────────────────────────────────
 # TAB 4: Bootstrap
 # ───────────────────────────────────────────────────────────
-with tabs[3]:
+elif page == "🎲 확률 분포":
     st.subheader("🎲 확률 분포 분석 — 5,000번 시뮬레이션")
     st.caption("과거 수익률 순서를 무작위로 섞어 5,000가지 미래 경로를 생성. 단일 16년 경로보다 실제 기대 범위를 더 정직하게 보여줌.")
 
@@ -740,7 +785,7 @@ with tabs[3]:
 # ───────────────────────────────────────────────────────────
 # TAB 5: Year-by-Year
 # ───────────────────────────────────────────────────────────
-with tabs[4]:
+elif page == "📅 연도별 성과":
     st.subheader("📅 연도별 성과 — 17년 V1 vs BASE")
     st.caption("V1이 매년 일관되게 BASE보다 우월하면 전략이 특정 기간 운으로 만들어진 게 아님을 증명. 수익률·낙폭·샤프 비교.")
 
@@ -822,7 +867,7 @@ with tabs[4]:
 # ───────────────────────────────────────────────────────────
 # TAB 6: Multi-window OOS
 # ───────────────────────────────────────────────────────────
-with tabs[5]:
+elif page == "🔄 기간별 안정성":
     st.subheader("🔄 기간별 안정성 — 1년~16년 윈도우 검증")
     st.caption("최근 1년, 2년, 5년, 16년 등 다양한 기간에서도 V1이 일관되게 BASE보다 우월한지 확인. 특정 기간 cherry-pick이 아님을 검증.")
 
@@ -875,7 +920,7 @@ with tabs[5]:
 # ───────────────────────────────────────────────────────────
 # TAB 7: BUBE Live (Alpaca paper)
 # ───────────────────────────────────────────────────────────
-with tabs[6]:
+elif page == "💰 실시간 현황":
     st.subheader("💰 실시간 현황 — Alpaca 페이퍼 계정")
     st.caption("봇이 오늘 어떤 레짐으로 판정하고, 비중을 어떻게 조절했는지 실시간으로 확인.")
     st.info("ℹ️ **현재 운영 중: V1 + 비대칭 갭필터 (2026-06-03~)** "
@@ -914,7 +959,7 @@ with tabs[6]:
         st.info(
             "ℹ️ **빠른 로딩을 위해 Live 데이터는 클릭 시에만 로드됩니다.** "
             "regime 계산 (yfinance 5종목 × 600일) + Alpaca paper 계정 조회는 위 버튼을 누르면 시작됩니다. "
-            "백테 데이터 (Tab 1-6, 8, 9)는 이 버튼과 무관 — 이미 표시됨."
+            "백테 데이터 (백테스트·거래내역·위기방어력 등 메뉴)는 이 버튼과 무관 — 이미 표시됨."
         )
         st.stop()
 
@@ -1431,247 +1476,163 @@ def _render_v2_tab():
         )
 
 
-# V2 탭은 SHOW_V2가 True일 때만 렌더 (기본 False = 운영 대시보드에서 숨김)
-if SHOW_V2:
-    with tabs[7]:
-        _render_v2_tab()
+# V2 탭 (사이드바 미노출, SHOW_V2=False 기본)
+if SHOW_V2 and page == "🆚 V2_FINAL 비교":
+    _render_v2_tab()
 
 
 # ───────────────────────────────────────────────────────────
 # TAB 9: 최근 1달 매매일지 (signal_diagnostics + trade_log_enriched)
 # ───────────────────────────────────────────────────────────
-with tabs[IDX_JOURNAL]:
-    st.subheader("📔 최근 매매일지 — 일별 신호값 & 비중 산출 과정")
-    st.caption("각 거래일에 VIX·VVIX·레짐 등 신호가 어떤 값이었는지, 그 결과 비중(k_today)이 어떻게 계산됐는지 단계별로 확인.")
+elif page == "📔 매매일지":
+    st.subheader("📔 V1 매매일지 — 일별 레짐·비중·거래 현황")
+    st.caption("V1 백테스트의 일별 레짐 판정, VIX 기반 비중(k_today), 활성 엔진, 거래 내역을 보여줍니다. 데이터는 백테스트 기준.")
 
-    diag_path = V2DIR / "signal_diagnostics.csv"
-    eq_path = V2DIR / "equity_paths.csv"
-    trades_path = V2DIR / "trade_log_enriched.csv"
+    def _mtime_j2(p):
+        try: return p.stat().st_mtime
+        except Exception: return 0
 
-    if not diag_path.exists():
-        st.error("data/v2_final/signal_diagnostics.csv 없음. daily update 한 번 돌려야 함: "
-                 "`python local/strategies/bube_v2_daily_update.py`")
-    else:
-        def _mtime_j(p):
-            try: return p.stat().st_mtime
-            except Exception: return 0
+    @st.cache_data
+    def _load_daily_j2(_k):
+        return pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
 
-        @st.cache_data
-        def _load_diag(_mtime_key):
-            return pd.read_csv(diag_path, parse_dates=["date"])
+    @st.cache_data
+    def _load_eq_j2(_k):
+        return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
 
-        @st.cache_data
-        def _load_eq_for_journal(_mtime_key):
-            return pd.read_csv(eq_path, parse_dates=["date"], index_col="date")
+    @st.cache_data
+    def _load_trades_j2(_k):
+        t = pd.read_csv(CHAMP / "trades_champ.csv")
+        t["date"] = pd.to_datetime(t["date"])
+        return t
 
-        @st.cache_data
-        def _load_trades_journal(_mtime_key):
-            if not trades_path.exists():
-                return None
-            return pd.read_csv(trades_path, parse_dates=["date"])
+    _daily_j = _load_daily_j2(_mtime_j2(CHAMP / "daily.csv"))
+    _eq_j = _load_eq_j2(_mtime_j2(CHAMP / "equity_curves.csv"))
+    _trades_j = _load_trades_j2(_mtime_j2(CHAMP / "trades_champ.csv"))
 
-        diag = _load_diag(_mtime_j(diag_path))
-        eq_j = _load_eq_for_journal(_mtime_j(eq_path))
-        trades_j = _load_trades_journal(_mtime_j(trades_path))
+    # ── 기간 선택 ──
+    _n_opts = {"최근 20거래일": 20, "최근 1달": 30, "최근 60거래일": 60, "최근 90거래일": 90}
+    _sel = st.radio("기간", list(_n_opts.keys()), index=1, horizontal=True, key="j2_period")
+    _n_show = _n_opts[_sel]
 
-        # ── A. Period selector ──
-        n_days_opts = {"최근 20거래일": 20, "최근 1달 (30일)": 30,
-                       "최근 60거래일": 60, "최근 90거래일": 90}
-        sel = st.radio("기간", list(n_days_opts.keys()), index=1, horizontal=True, key="journal_period")
-        n_show = n_days_opts[sel]
+    _daily_rec = _daily_j.tail(_n_show)
+    _eq_rec = _eq_j.reindex(_daily_rec.index)["CHAMP_NOMARGIN"] if "CHAMP_NOMARGIN" in _eq_j.columns else pd.Series(dtype=float)
+    _eq_daily_ret = _eq_rec.pct_change() * 100
 
-        diag_recent = diag.tail(n_show).reset_index(drop=True)
+    # ── 거래 집계 ──
+    _trades_recent = _trades_j[_trades_j["date"].dt.normalize().isin(_daily_rec.index.normalize())]
+    _by_date = _trades_recent.groupby(_trades_recent["date"].dt.normalize()).agg(
+        건수=("action", "count"),
+        엔진=("leg", lambda x: "/".join(sorted(set(x)))),
+        pnl=("pnl", "sum")
+    )
 
-        # ── B. Summary headline ──
-        st.markdown(f"### 📊 {sel} 요약")
-        n_bull = (diag_recent["regime"] == "BULL").sum()
-        n_bear = (diag_recent["regime"] == "BEAR").sum()
-        n_neut = (diag_recent["regime"] == "NEUTRAL").sum()
-        n_vvix_gate = int(diag_recent["vvix_gate_active"].sum())
-        n_ndx_throt = int((diag_recent["ndx_scale"] < 1.0).sum())
-        mean_k = float(diag_recent["k_final"].mean())
-        mean_vix = float(diag_recent["VIX"].mean())
+    # ── 요약 카드 ──
+    _has_rg = "regime" in _daily_rec.columns
+    _has_k = "k_today" in _daily_rec.columns
+    _has_vix = "VIX" in _daily_rec.columns
+    _has_act = "active_CHAMP" in _daily_rec.columns
 
-        h1, h2, h3, h4 = st.columns(4)
-        h1.metric("Regime 분포", f"BULL {n_bull} / BEAR {n_bear} / NEUT {n_neut}",
-                  f"{len(diag_recent)}일 중")
-        h2.metric("Mean k_final (V2)", f"{mean_k:.3f}",
-                  f"VIX 평균 {mean_vix:.1f}")
-        h3.metric("VVIX gate 발동", f"{n_vvix_gate}일",
-                  f"{n_vvix_gate/len(diag_recent)*100:.0f}% of period")
-        h4.metric("NDX/SPY throttle 발동", f"{n_ndx_throt}일",
-                  f"{n_ndx_throt/len(diag_recent)*100:.0f}% of period")
+    _n_bull = int((_daily_rec["regime"] == "BULL").sum()) if _has_rg else 0
+    _n_bear = int((_daily_rec["regime"] == "BEAR").sum()) if _has_rg else 0
+    _n_neut = int((_daily_rec["regime"] == "NEUTRAL").sum()) if _has_rg else 0
+    _avg_vix = float(_daily_rec["VIX"].mean()) if _has_vix else float("nan")
+    _avg_k = float(_daily_rec["k_today"].mean()) if _has_k else float("nan")
+    _trade_days = len(_by_date)
 
+    st.markdown(f"### 📊 {_sel} 요약")
+    _h1, _h2, _h3, _h4 = st.columns(4)
+    _h1.metric("레짐 — BULL 일수", f"{_n_bull}일", f"BEAR {_n_bear}일 / NEUTRAL {_n_neut}일")
+    _h2.metric("평균 VIX", f"{_avg_vix:.1f}" if not pd.isna(_avg_vix) else "—",
+               "20 = 중립 기준")
+    _h3.metric("평균 k_today (비중)", f"{_avg_k:.3f}" if not pd.isna(_avg_k) else "—",
+               "1.0 = 풀로딩 / 0.33 = 33%")
+    _h4.metric("거래 발생일", f"{_trade_days}일",
+               f"전체 {len(_daily_rec)}일 중")
+
+    st.markdown("---")
+
+    # ── 미니 자산 차트 ──
+    if len(_eq_rec) >= 2:
+        st.markdown("### 📈 기간 자산 추이")
+        _eq_disp = pd.DataFrame({"V1 자산 ($)": _eq_rec.values}, index=_eq_rec.index)
+        st.line_chart(_eq_disp, height=200)
         st.markdown("---")
 
-        # ── C. Day-by-day table with all signal values ──
-        st.markdown("### 📋 일별 신호값 표 (V2_FINAL 기준)")
+    # ── 일별 현황 테이블 ──
+    st.markdown("### 📋 일별 현황 (최신 날짜부터)")
 
-        disp = diag_recent.copy()
-        # Add V1 k_final for comparison: V1 only uses VIX scale, no VVIX, no NDX
-        disp["k_V1"] = (0.65 * disp["vix_scale"]).clip(upper=1.0)
-        # V2 equity / V1 equity from equity_paths
-        eq_for_recent = eq_j.reindex(pd.to_datetime(diag_recent["date"]))
-        disp["V1_equity"] = eq_for_recent["V1"].values
-        disp["V2_equity"] = eq_for_recent["V2_FINAL"].values
+    _rows = []
+    for _date, _drow in _daily_rec.iloc[::-1].iterrows():
+        _rg = _drow["regime"] if _has_rg else "—"
+        _act = _drow["active_CHAMP"] if _has_act else "—"
+        _vix = float(_drow["VIX"]) if _has_vix else float("nan")
+        _k = float(_drow["k_today"]) if _has_k else float("nan")
+        _date_norm = _date.normalize() if hasattr(_date, "normalize") else _date
+        _dr = float(_eq_daily_ret.get(_date, float("nan")))
 
-        # Format display
-        view = pd.DataFrame({
-            "날짜": disp["date"].dt.strftime("%Y-%m-%d"),
-            "Regime": disp["regime"],
-            "Active": disp["active"],
-            "VIX": disp["VIX"].apply(lambda x: f"{x:.2f}"),
-            "VVIX": disp["VVIX"].apply(lambda x: f"{x:.2f}"),
-            "NDX/SPY 20d RS": disp["NDX_SPY_RS_20d"].apply(lambda x: f"{x:+.3f}"),
-            "SOXL 5d ret": disp["SOXL_5d_ret"].apply(lambda x: f"{x:+.3f}"),
-            "vix_scale": disp["vix_scale"].apply(lambda x: f"{x:.3f}"),
-            "vvix_scale": disp["vvix_scale"].apply(lambda x: f"{x:.3f}"),
-            "ndx_scale": disp["ndx_scale"].apply(lambda x: f"{x:.2f}"),
-            "k_V1 (VIX only)": disp["k_V1"].apply(lambda x: f"{x:.3f}"),
-            "k_V2 (final)": disp["k_final"].apply(lambda x: f"{x:.3f}"),
-            "V1 Equity": disp["V1_equity"].apply(lambda x: _money(x) if not pd.isna(x) else "—"),
-            "V2 Equity": disp["V2_equity"].apply(lambda x: _money(x) if not pd.isna(x) else "—"),
+        if _date_norm in _by_date.index:
+            _tr = _by_date.loc[_date_norm]
+            _trade_str = f"✅ {int(_tr['건수'])}건 ({_tr['엔진']})"
+            _pnl_str = f"${float(_tr['pnl']):+,.0f}"
+        else:
+            _trade_str = "— 없음"
+            _pnl_str = "—"
+
+        if _rg == "BULL":
+            _rg_disp = "🟢 BULL"
+        elif _rg == "BEAR":
+            _rg_disp = "🔴 BEAR"
+        elif _rg == "NEUTRAL":
+            _rg_disp = "🟡 NEUTRAL"
+        else:
+            _rg_disp = _rg
+
+        _rows.append({
+            "날짜": _date.strftime("%Y-%m-%d") if hasattr(_date, "strftime") else str(_date),
+            "레짐": _rg_disp,
+            "활성 엔진": _act,
+            "VIX": f"{_vix:.2f}" if not pd.isna(_vix) else "—",
+            "k_today (비중)": f"{_k:.3f}" if not pd.isna(_k) else "—",
+            "일간 변동": f"{_dr:+.2f}%" if not pd.isna(_dr) else "—",
+            "거래": _trade_str,
+            "거래 P&L": _pnl_str,
         })
-        st.dataframe(view, use_container_width=True, hide_index=True, height=480)
 
-        # CSV download — lazy 처리 (Tab 2와 동일 패턴)
-        # 이전: 매 rerun마다 to_csv encode + st.download_button 등록
-        #   → Streamlit Cloud 서버 연결 일시 단절 시 'not connected to a server!' 에러 발생
-        # 이후: '준비' 버튼 클릭 시에만 encode → session_state 저장 → download_button 표시
-        d_start = diag_recent['date'].iloc[0].date()
-        d_end = diag_recent['date'].iloc[-1].date()
-        if st.button(f"💾 매매일지 CSV 준비 ({len(view):,} rows)", key="journal_dl_prep"):
-            st.session_state["journal_csv_ready"] = view.to_csv(index=False).encode("utf-8-sig")
-            st.session_state["journal_csv_range"] = f"{d_start}_{d_end}"
-        if "journal_csv_ready" in st.session_state:
-            st.download_button(
-                f"⬇️ bube_journal_{st.session_state.get('journal_csv_range','')}.csv 받기",
-                data=st.session_state["journal_csv_ready"],
-                file_name=f"bube_journal_{st.session_state.get('journal_csv_range', f'{d_start}_{d_end}')}.csv",
-                mime="text/csv",
-                key="journal_dl"
-            )
+    _view_df = pd.DataFrame(_rows)
+    st.dataframe(_view_df, use_container_width=True, hide_index=True, height=520)
 
-        st.markdown("---")
+    if st.button("💾 CSV 준비", key="j2_dl_prep"):
+        st.session_state["j2_csv"] = _view_df.to_csv(index=False).encode("utf-8-sig")
+    if "j2_csv" in st.session_state:
+        _d0 = _daily_rec.index[0].strftime("%Y%m%d") if len(_daily_rec) else "start"
+        _d1 = _daily_rec.index[-1].strftime("%Y%m%d") if len(_daily_rec) else "end"
+        st.download_button(
+            "⬇️ V1 매매일지 CSV",
+            data=st.session_state["j2_csv"],
+            file_name=f"v1_journal_{_d0}_{_d1}.csv",
+            mime="text/csv",
+            key="j2_dl"
+        )
 
-        # ── D. Per-day expander: 산식 검증 (math step-by-step) ──
-        st.markdown("### 🔍 일별 산식 검증 — 각 수치가 어떻게 산출됐는지")
-        st.caption("최근 5거래일에 대해 펼쳐서 검증 가능. k_today 산출 과정을 단계별로 표시.")
+    st.markdown("---")
+    st.info("""
+**💡 컬럼 설명**
 
-        last5 = diag_recent.tail(5).iloc[::-1].reset_index(drop=True)  # newest first
-        for _, row in last5.iterrows():
-            d_str = row["date"].strftime("%Y-%m-%d")
-            with st.expander(f"📅 **{d_str}** — Regime: {row['regime']}, Active: {row['active']}, "
-                             f"k_V2 = {row['k_final']:.3f}"):
-                col_a, col_b = st.columns([1, 1])
-
-                with col_a:
-                    st.markdown("**📥 입력값 (raw signals, look-ahead safe)**")
-                    inputs = pd.DataFrame({
-                        "Signal": ["VIX (close)", "VVIX (close)", "NDX/SPY 20d RS",
-                                   "SOXL 5d return", "Regime", "Active sub-strategy",
-                                   "VVIX gate active?"],
-                        "Value": [
-                            f"{row['VIX']:.2f}",
-                            f"{row['VVIX']:.2f}",
-                            f"{row['NDX_SPY_RS_20d']:+.4f}  ({'음수' if row['NDX_SPY_RS_20d'] < 0 else '양수'})",
-                            f"{row['SOXL_5d_ret']:+.4f}  ({'음수' if row['SOXL_5d_ret'] < 0 else '양수'})",
-                            row["regime"],
-                            row["active"],
-                            "True" if row["vvix_gate_active"] else "False (SOXL 5d ret ≥ 0)",
-                        ],
-                    })
-                    st.dataframe(inputs, use_container_width=True, hide_index=True)
-
-                with col_b:
-                    st.markdown("**🧮 산식 단계별 검증**")
-                    # vix_scale verification
-                    vix_calc = max(0.5, min(2.0, 20.0 / row["VIX"]))
-                    vix_match = "✅" if abs(vix_calc - row["vix_scale"]) < 1e-6 else "❌"
-                    # vvix_scale verification
-                    if row["vvix_gate_active"] and row["VVIX"] > 0:
-                        vvix_calc = max(0.5, min(1.0, 90.0 / row["VVIX"]))
-                    else:
-                        vvix_calc = 1.0
-                    vvix_match = "✅" if abs(vvix_calc - row["vvix_scale"]) < 1e-6 else "❌"
-                    # ndx_scale verification
-                    ndx_calc = 0.8 if row["NDX_SPY_RS_20d"] < 0 else 1.0
-                    ndx_match = "✅" if abs(ndx_calc - row["ndx_scale"]) < 1e-6 else "❌"
-                    # k_V1 = 0.65 × vix_scale (capped 1.0)
-                    k_v1_calc = min(0.65 * row["vix_scale"], 1.0)
-                    # k_V2 = 0.65 × vix_scale × vvix_scale × ndx_scale (capped 1.0)
-                    k_v2_calc = min(0.65 * row["vix_scale"] * row["vvix_scale"] * row["ndx_scale"], 1.0)
-                    k_v2_match = "✅" if abs(k_v2_calc - row["k_final"]) < 1e-4 else "❌"
-
-                    st.code(f"""
-# ① vix_scale = clip(20 / VIX, 0.5, 2.0)
-vix_scale = clip(20.0 / {row['VIX']:.2f}, 0.5, 2.0)
-         = clip({20/row['VIX']:.4f}, 0.5, 2.0)
-         = {vix_calc:.4f}     [stored: {row['vix_scale']:.4f}]  {vix_match}
-
-# ② vvix_scale = (SOXL_5d < 0 인 날만 clamp 적용)
-{'#   gate active (SOXL_5d_ret = ' + f"{row['SOXL_5d_ret']:+.4f}" + ' < 0)' if row['vvix_gate_active'] else '#   gate inactive (SOXL_5d_ret = ' + f"{row['SOXL_5d_ret']:+.4f}" + ' >= 0 → scale=1.0)'}
-vvix_scale = {'clip(90 / ' + f"{row['VVIX']:.2f}" + ', 0.5, 1.0) = ' + f"{vvix_calc:.4f}" if row['vvix_gate_active'] else '1.0 (gate off)'}
-                                  [stored: {row['vvix_scale']:.4f}]  {vvix_match}
-
-# ③ ndx_scale = (NDX/SPY 20d RS < 0 → 0.8, else 1.0)
-ndx_scale = {'0.8 (RS = ' + f"{row['NDX_SPY_RS_20d']:+.4f}" + ' < 0)' if row['NDX_SPY_RS_20d'] < 0 else '1.0 (RS = ' + f"{row['NDX_SPY_RS_20d']:+.4f}" + ' >= 0)'}
-                                  [stored: {row['ndx_scale']:.2f}]  {ndx_match}
-
-# ④ k_V1 = min(0.65 × vix_scale, 1.0)        ← V1 (paper 봇 실제 사용)
-k_V1 = min(0.65 × {row['vix_scale']:.4f}, 1.0)
-     = min({0.65*row['vix_scale']:.4f}, 1.0)
-     = {k_v1_calc:.4f}
-
-# ⑤ k_V2 = min(0.65 × vix × vvix × ndx, 1.0)  ← V2 (백테 비교용)
-k_V2 = min(0.65 × {row['vix_scale']:.4f} × {row['vvix_scale']:.4f} × {row['ndx_scale']:.2f}, 1.0)
-     = min({0.65*row['vix_scale']*row['vvix_scale']*row['ndx_scale']:.4f}, 1.0)
-     = {k_v2_calc:.4f}        [stored: {row['k_final']:.4f}]  {k_v2_match}
-
-# 해석:
-# • V1 alloc 비율 = {k_v1_calc*100:.1f}%  (BUBE rotation strat_alloc × {k_v1_calc:.3f})
-# • V2 alloc 비율 = {k_v2_calc*100:.1f}%  (V1 대비 {(k_v2_calc/k_v1_calc - 1)*100:+.1f}%)
-""", language="python")
-
-                # Trades that day (if any)
-                if trades_j is not None:
-                    day_trades = trades_j[trades_j["date"].dt.date == row["date"].date()]
-                    if len(day_trades) > 0:
-                        st.markdown(f"**💸 이 날 V2 매매 ({len(day_trades)}건)**")
-                        td = day_trades[["strategy", "leg", "ticker", "action",
-                                          "qty", "price", "pnl", "side"]].copy()
-                        td["qty"] = td["qty"].apply(lambda x: f"{x:,.0f}")
-                        td["price"] = td["price"].apply(lambda x: f"${x:.4f}")
-                        td["pnl"] = td["pnl"].apply(lambda x: f"${x:+,.2f}")
-                        st.dataframe(td, use_container_width=True, hide_index=True)
-                    else:
-                        st.caption("이 날 매매 이벤트 없음 (포지션 hold).")
-
-        st.markdown("---")
-
-        # ── E. Notes ──
-        st.info("""
-**💡 산식 빠른 참조 (paper 봇 = V1 only)**
-
-```
-# Paper 봇 (bube_trader.py) — V1 CHAMP_NOMARGIN, 매일 09:35 ET open_stops에서 계산
-k_today = 0.65 × clip(20.0 / VIX, 0.5, 2.0)   # VIX dynamic
-alloc_today = min(k_today × strat_alloc, 1.0)  # margin 사용 X
-
-# V2_FINAL (백테만, paper 미적용) — V1 위에 두 신호 추가
-k_V2 = k_V1 × vvix_scale × ndx_scale
-vvix_scale = clip(90/VVIX, 0.5, 1.0) if SOXL_5d_ret < 0 else 1.0   # 약세 때만 vol-of-vol clamp
-ndx_scale  = 0.8 if NDX/SPY_20d_RS < 0 else 1.0                    # tech 약세 시 20% throttle
-```
-
-**검증 마크**: ✅ = 저장값과 재계산값 일치, ❌ = 불일치 (있으면 즉시 확인).
+- **레짐** 🟢 BULL = 상승장(롱변기) · 🔴 BEAR = 하락장(양변기) · 🟡 NEUTRAL = 중립(롱변기)
+- **활성 엔진** — 롱변기(SOXL 단방향) / 양변기(SOXL+SOXS 페어) / 황금변기(변동성 돌파)
+- **VIX** — 공포지수. 10~15 안정, 20 중립, 30+ 공포
+- **k_today** — 오늘 투자 비중. `0.65 × clip(20/VIX, 0.5, 2.0)`. VIX 20→0.65, VIX 10→1.0(풀로딩), VIX 40→0.33(축소)
+- **일간 변동** — V1 포트폴리오 당일 수익률 (백테스트 기준)
+- **거래** — 당일 매매 이벤트 수 및 사용한 엔진
+- **거래 P&L** — 당일 실현·미실현 손익 합계 (백테스트 기준)
 """)
 
 
 # ───────────────────────────────────────────────────────────
 # 용어 사전 탭
 # ───────────────────────────────────────────────────────────
-with tabs[IDX_GLOSSARY]:
+elif page == "📖 용어 사전":
     st.subheader("📖 용어 사전 — 처음 보는 분을 위한 용어 정리")
     st.caption("이 대시보드에 등장하는 용어들을 카테고리별로 정리했습니다.")
 
