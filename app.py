@@ -397,10 +397,8 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
 **원칙**: 실제 거래 시뮬레이션(trade-level OHLC) 결과만 운영 판단에 사용. 이 대시보드의 모든 수치는 해당 기준.
 """)
 
-    # ── 16년 자산 성장 곡선 ──────────────────────────────────────
+    # ── 자산 성장 곡선 ──────────────────────────────────────────
     st.markdown("---")
-    st.markdown("### 📈 16년 자산 성장 곡선 — $10만 시드")
-    st.caption("2010-05-25 ~ 현재. V1 CHAMP_NOMARGIN vs 고정비중 BASE. VIX 동적 비중 조절 알파를 시각적으로 확인.")
 
     def _mtime_bt(p):
         try: return p.stat().st_mtime
@@ -411,15 +409,50 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
         return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
 
     _eq_bt = _load_eq_bt(_mtime_bt(CHAMP / "equity_curves.csv"))
+    _eq_end = _eq_bt.index[-1]
+
+    # 기간 선택 버튼
+    _periods = {"3M": 3, "6M": 6, "1Y": 12, "3Y": 36, "5Y": 60, "10Y": 120, "전체": None}
+    _period_cols = st.columns(len(_periods))
+    _sel_period = st.session_state.get("eq_period", "전체")
+    for _i, (_lbl, _mo) in enumerate(_periods.items()):
+        if _period_cols[_i].button(_lbl, type="primary" if _lbl == _sel_period else "secondary",
+                                   use_container_width=True, key=f"eqp_{_lbl}"):
+            _sel_period = _lbl
+            st.session_state["eq_period"] = _lbl
+
+    # 선택 기간 슬라이스
+    _sel_mo = _periods[_sel_period]
+    if _sel_mo is not None:
+        _eq_slice = _eq_bt.loc[_eq_end - pd.DateOffset(months=_sel_mo):]
+    else:
+        _eq_slice = _eq_bt
+
     _seed_bt = 100_000.0
-    _s = float(_eq_bt["CHAMP_NOMARGIN"].iloc[0])
-    _b = float(_eq_bt["BASE"].iloc[0])
+    _s = float(_eq_slice["CHAMP_NOMARGIN"].iloc[0])
+    _b = float(_eq_slice["BASE"].iloc[0])
     _eq_chart_bt = pd.DataFrame({
-        "V1 CHAMP_NOMARGIN ($)": (_eq_bt["CHAMP_NOMARGIN"] / _s * _seed_bt).values,
-        "BASE k=0.65 ($)": (_eq_bt["BASE"] / _b * _seed_bt).values,
-    }, index=_eq_bt.index)
-    st.line_chart(_eq_chart_bt, height=380)
-    st.caption("💡 거래 내역 메뉴에서 시드·기간 자유 설정 가능. 위 차트는 $10만 16년 전체 기준.")
+        "V1 CHAMP_NOMARGIN ($)": (_eq_slice["CHAMP_NOMARGIN"] / _s * _seed_bt).values,
+        "BASE k=0.65 ($)": (_eq_slice["BASE"] / _b * _seed_bt).values,
+    }, index=_eq_slice.index)
+
+    # 기간 내 통계
+    _n_yr = (_eq_slice.index[-1] - _eq_slice.index[0]).days / 365.25
+    _cagr = ((_eq_slice["CHAMP_NOMARGIN"].iloc[-1] / _eq_slice["CHAMP_NOMARGIN"].iloc[0]) ** (1 / _n_yr) - 1) * 100
+    _roll = _eq_slice["CHAMP_NOMARGIN"].expanding().max()
+    _mdd  = ((_eq_slice["CHAMP_NOMARGIN"] - _roll) / _roll).min() * 100
+    _cal  = _cagr / abs(_mdd)
+    _ret  = (_eq_slice["CHAMP_NOMARGIN"].iloc[-1] / _eq_slice["CHAMP_NOMARGIN"].iloc[0] - 1) * 100
+
+    _sc1, _sc2, _sc3, _sc4 = st.columns(4)
+    _sc1.metric("구간 수익", f"{_ret:+.1f}%")
+    _sc2.metric("CAGR", f"{_cagr:+.1f}%")
+    _sc3.metric("MDD", f"{_mdd:.1f}%")
+    _sc4.metric("Calmar", f"{_cal:.2f}")
+
+    st.markdown(f"### 📈 자산 성장 곡선 — $10만 시드 ({_sel_period})")
+    st.line_chart(_eq_chart_bt, height=400)
+    st.caption("V1 CHAMP_NOMARGIN vs 고정비중 BASE(k=0.65). 구간 시작 기준 $10만으로 재조정.")
 
 
 # ───────────────────────────────────────────────────────────
