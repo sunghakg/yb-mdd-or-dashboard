@@ -431,10 +431,6 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
     _seed_bt = 100_000.0
     _s = float(_eq_slice["CHAMP_NOMARGIN"].iloc[0])
     _b = float(_eq_slice["BASE"].iloc[0])
-    _eq_chart_bt = pd.DataFrame({
-        "V1 CHAMP_NOMARGIN ($)": (_eq_slice["CHAMP_NOMARGIN"] / _s * _seed_bt).values,
-        "BASE k=0.65 ($)": (_eq_slice["BASE"] / _b * _seed_bt).values,
-    }, index=_eq_slice.index)
 
     # 기간 내 통계
     _n_yr = (_eq_slice.index[-1] - _eq_slice.index[0]).days / 365.25
@@ -451,7 +447,34 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
     _sc4.metric("Calmar", f"{_cal:.2f}")
 
     st.markdown(f"### 📈 자산 성장 곡선 — $10만 시드 ({_sel_period})")
-    st.line_chart(_eq_chart_bt, height=400)
+
+    # Altair 차트 — 툴팁 달러 포맷
+    import altair as alt
+    _v1_vals = (_eq_slice["CHAMP_NOMARGIN"] / _s * _seed_bt).values
+    _bs_vals = (_eq_slice["BASE"] / _b * _seed_bt).values
+    _chart_df = pd.DataFrame({
+        "날짜": list(_eq_slice.index) * 2,
+        "자산": list(_v1_vals) + list(_bs_vals),
+        "전략": ["V1 CHAMP_NOMARGIN"] * len(_v1_vals) + ["BASE k=0.65"] * len(_bs_vals),
+    })
+    _eq_altair = (
+        alt.Chart(_chart_df)
+        .mark_line(strokeWidth=1.5)
+        .encode(
+            x=alt.X("날짜:T", title="날짜"),
+            y=alt.Y("자산:Q", title="자산 ($)", axis=alt.Axis(format="$,.0f")),
+            color=alt.Color("전략:N", scale=alt.Scale(
+                domain=["V1 CHAMP_NOMARGIN", "BASE k=0.65"],
+                range=["#3b82f6", "#6b7280"])),
+            tooltip=[
+                alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
+                alt.Tooltip("전략:N", title="전략"),
+                alt.Tooltip("자산:Q", title="자산", format="$,.0f"),
+            ],
+        )
+        .properties(height=400)
+    )
+    st.altair_chart(_eq_altair, use_container_width=True)
     st.caption("V1 CHAMP_NOMARGIN vs 고정비중 BASE(k=0.65). 구간 시작 기준 $10만으로 재조정.")
 
 
