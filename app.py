@@ -127,6 +127,76 @@ col4.metric("$10만 → 최종 (16년)", _money(H_CHAMP['Final_mult'] * 100_000)
             f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.1f} BASE",
             help="$100,000 시드로 2010년부터 시작했을 때의 백테스트 최종 자산. in-sample 단일 경로 기준 (bootstrap 중앙값은 더 낮음).")
 
+# ── 기간별 비교 ──────────────────────────────────────────────
+@st.cache_data
+def _period_stats(_mtime):
+    eq = pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"]).set_index("date").sort_index()
+    s = eq["CHAMP_NOMARGIN"]
+    end = s.index[-1]
+
+    def _stats(ser):
+        n_yr = (ser.index[-1] - ser.index[0]).days / 365.25
+        cagr = (ser.iloc[-1] / ser.iloc[0]) ** (1 / n_yr) - 1
+        roll_max = ser.expanding().max()
+        mdd = ((ser - roll_max) / roll_max).min()
+        cal = cagr / abs(mdd)
+        return {"n_yr": n_yr, "CAGR": cagr * 100, "MDD": mdd * 100, "Calmar": cal, "mult": ser.iloc[-1] / ser.iloc[0]}
+
+    r16 = _stats(s)
+    r10 = _stats(s.loc[end - pd.DateOffset(years=10):])
+    r5  = _stats(s.loc[end - pd.DateOffset(years=5):])
+    return r16, r10, r5
+
+_mtime_eq = (CHAMP / "equity_curves.csv").stat().st_mtime if (CHAMP / "equity_curves.csv").exists() else 0
+_r16, _r10, _r5 = _period_stats(_mtime_eq)
+
+def _cal_color(v):
+    if v >= 2.0: return "#4ade80"
+    if v >= 1.0: return "#facc15"
+    return "#f87171"
+
+def _mdd_color(v):
+    if v >= -20: return "#4ade80"
+    if v >= -35: return "#facc15"
+    return "#f87171"
+
+st.markdown(f"""
+<table style="width:100%;border-collapse:collapse;font-size:0.88em;margin-top:6px">
+  <thead>
+    <tr style="border-bottom:1px solid #334155;color:#94a3b8;text-align:right">
+      <th style="text-align:left;padding:4px 8px">기간</th>
+      <th style="padding:4px 12px">Calmar</th>
+      <th style="padding:4px 12px">CAGR</th>
+      <th style="padding:4px 12px">MDD</th>
+      <th style="padding:4px 12px">$10만→</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #1e293b">
+      <td style="padding:5px 8px;color:#e2e8f0;font-weight:600">16년 (전체)</td>
+      <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r16['Calmar'])};font-weight:700">{_r16['Calmar']:.2f}</td>
+      <td style="padding:5px 12px;text-align:right;color:#60a5fa">{_r16['CAGR']:+.1f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r16['MDD'])}">{_r16['MDD']:.1f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:#e2e8f0">{_money(_r16['mult']*100_000)}</td>
+    </tr>
+    <tr style="border-bottom:1px solid #1e293b">
+      <td style="padding:5px 8px;color:#e2e8f0;font-weight:600">10년 (롤링)</td>
+      <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r10['Calmar'])};font-weight:700">{_r10['Calmar']:.2f}</td>
+      <td style="padding:5px 12px;text-align:right;color:#60a5fa">{_r10['CAGR']:+.1f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r10['MDD'])}">{_r10['MDD']:.1f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:#e2e8f0">{_money(_r10['mult']*100_000)}</td>
+    </tr>
+    <tr>
+      <td style="padding:5px 8px;color:#e2e8f0;font-weight:600"> 5년 (롤링)</td>
+      <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r5['Calmar'])};font-weight:700">{_r5['Calmar']:.2f}</td>
+      <td style="padding:5px 12px;text-align:right;color:#60a5fa">{_r5['CAGR']:+.1f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r5['MDD'])}">{_r5['MDD']:.1f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:#e2e8f0">{_money(_r5['mult']*100_000)}</td>
+    </tr>
+  </tbody>
+</table>
+""", unsafe_allow_html=True)
+
 # Last update marker (daily auto-push from bube_v2_daily_update.py)
 def _read_last_updated():
     candidates = [V2DIR / "last_update_at.txt", CHAMP / "last_update_at.txt"]
