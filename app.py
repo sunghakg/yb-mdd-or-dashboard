@@ -2298,8 +2298,8 @@ elif page == "📔 매매일지":
 <div style="background:#1e293b;border-left:4px solid {_ret_color};padding:12px 16px;border-radius:8px;margin-bottom:16px">
   <span style="color:#94a3b8;font-size:0.85em">선택 날짜</span><br>
   <span style="color:#f1f5f9;font-size:1.25em;font-weight:700">{_sel_date_str}</span>
-  &nbsp;&nbsp;<span style="color:{_ret_color};font-size:1.5em;font-weight:700">{_sel_ret:+.2f}%</span><br>
-  <span style="color:#94a3b8;font-size:0.88em">레짐: {_rg_emoji} {_rg_sel} &nbsp;·&nbsp; VIX: {_vix_sel:.1f} &nbsp;·&nbsp; k_today: {_k_sel:.3f} &nbsp;·&nbsp; 엔진: {_act_sel}</span>
+  &nbsp;&nbsp;<span style="color:{_ret_color};font-size:1.5em;font-weight:700">{f"{_sel_ret:+.2f}%" if not pd.isna(_sel_ret) else "—"}</span><br>
+  <span style="color:#94a3b8;font-size:0.88em">레짐: {_rg_emoji} {_rg_sel} &nbsp;·&nbsp; VIX: {f"{_vix_sel:.1f}" if not pd.isna(_vix_sel) else "—"} &nbsp;·&nbsp; k_today: {f"{_k_sel:.3f}" if not pd.isna(_k_sel) else "—"} &nbsp;·&nbsp; 엔진: {_act_sel}</span>
 </div>
 """, unsafe_allow_html=True)
 
