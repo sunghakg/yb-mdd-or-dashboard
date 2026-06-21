@@ -2337,6 +2337,54 @@ elif page == "📔 매매일지":
             use_container_width=True,
         )
 
+        # ── SOXL ±2 거래일 캔들스틱 ──
+        try:
+            import yfinance as _yf
+            @st.cache_data(ttl=3600)
+            def _fetch_soxl_ohlc(_ds, _w):
+                _d = pd.Timestamp(_ds)
+                _s = (_d - pd.offsets.BDay(_w + 2)).strftime("%Y-%m-%d")
+                _e = (_d + pd.offsets.BDay(_w + 2)).strftime("%Y-%m-%d")
+                _df = _yf.download("SOXL", start=_s, end=_e, auto_adjust=True,
+                                   progress=False, multi_level_index=False)
+                if isinstance(_df.columns, pd.MultiIndex):
+                    _df.columns = _df.columns.droplevel(1)
+                return _df.reset_index()[["Date", "Open", "High", "Low", "Close"]]
+            _soxl_raw = _fetch_soxl_ohlc(_sel_date_str, 2)
+            if not _soxl_raw.empty:
+                _soxl_df = _soxl_raw.copy()
+                _soxl_df.columns = ["날짜", "시가", "고가", "저가", "종가"]
+                _soxl_df["색"] = _soxl_df.apply(
+                    lambda r: "#22c55e" if r["종가"] >= r["시가"] else "#ef4444", axis=1
+                )
+                _soxl_vline = _alt_dd.Chart(pd.DataFrame({"날짜": [_sel_ts]})).mark_rule(
+                    color="#fbbf24", strokeWidth=2, strokeDash=[6, 3]
+                ).encode(x="날짜:T")
+                _cdl_rule = _alt_dd.Chart(_soxl_df).mark_rule(strokeWidth=1.5).encode(
+                    x=_alt_dd.X("날짜:T", title="날짜", axis=_alt_dd.Axis(format="%m/%d")),
+                    y=_alt_dd.Y("저가:Q", title="SOXL ($)", scale=_alt_dd.Scale(zero=False)),
+                    y2="고가:Q",
+                    color=_alt_dd.Color("색:N", scale=None),
+                )
+                _cdl_bar = _alt_dd.Chart(_soxl_df).mark_bar(width=20).encode(
+                    x="날짜:T",
+                    y="시가:Q",
+                    y2="종가:Q",
+                    color=_alt_dd.Color("색:N", scale=None),
+                    tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"),
+                             _alt_dd.Tooltip("시가:Q",  title="시가",  format="$.2f"),
+                             _alt_dd.Tooltip("고가:Q",  title="고가",  format="$.2f"),
+                             _alt_dd.Tooltip("저가:Q",  title="저가",  format="$.2f"),
+                             _alt_dd.Tooltip("종가:Q",  title="종가",  format="$.2f")],
+                )
+                st.markdown("**🕯 SOXL ±2 거래일 일봉**")
+                st.altair_chart(
+                    (_cdl_rule + _cdl_bar + _soxl_vline).properties(height=200),
+                    use_container_width=True,
+                )
+        except Exception as _e_soxl:
+            st.caption(f"SOXL 차트 로딩 실패: {_e_soxl}")
+
         # ── 거래 내역 ──
         _trades_win = _trades_j[
             (_trades_j["date"].dt.normalize() >= _win.index[0]) &
