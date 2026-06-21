@@ -2344,7 +2344,7 @@ elif page == "📔 매매일지":
         _k_src = _win.reset_index()[["date", "k_today"]].rename(columns={"date": "날짜"}).dropna(subset=["k_today"])
         _k_panel = (_alt_dd.Chart(_k_src).mark_line(color="#a78bfa", strokeWidth=1.5).encode(
             x=_alt_dd.X("날짜:T", title="날짜"),
-            y=_alt_dd.Y("k_today:Q", title="k_today", scale=_alt_dd.Scale(domain=[0, 1.4])),
+            y=_alt_dd.Y("k_today:Q", title="k_today", scale=_alt_dd.Scale(zero=False)),
             tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"), _alt_dd.Tooltip("k_today:Q", format=".3f")],
         ) + _vline).properties(height=100, title="k_today (배분 비중)")
 
@@ -2430,25 +2430,33 @@ elif page == "📔 매매일지":
                     _cpx = _close_map.get(_td_str)
                     if _cpx is None:
                         continue
-                    _is_buy = _tr["action"] == "STOP_BUY"
-                    _pnl_v  = float(_tr["pnl"]) if pd.notna(_tr["pnl"]) else 0.0
-                    _leg    = str(_tr["leg"])
-                    _tkr    = str(_tr["ticker"])
-                    _act    = str(_tr["action"])
+                    _is_buy  = _tr["action"] == "STOP_BUY"
+                    _pnl_v   = float(_tr["pnl"]) if pd.notna(_tr["pnl"]) else 0.0
+                    _strat   = str(_tr["strategy"])
+                    _leg     = str(_tr["leg"])
+                    _tkr     = str(_tr["ticker"])
+                    _act     = str(_tr["action"])
+                    _strat_kor = {
+                        "longbyungi":   "롱변기",
+                        "yangbyungi":   "양변기-" + ("롱" if _leg == "LONG" else "숏"),
+                        "goldenbyungi": "황금변기",
+                    }.get(_strat, _strat)
+                    _act_kor = {
+                        "STOP_BUY": "▲ 진입",
+                        "LOC_SELL": "▼ LOC 청산",
+                        "MOO_SELL": "▼ MOO 청산",
+                        "STOP":     "↩ 스탑 취소",
+                    }.get(_act, _act)
                     _row = {
                         "날짜_표시": _td_disp,
                         "날짜_str":  _td_str,
-                        # buy = 아래 위치(2% 하단), sell = 위(2% 상단)
                         "가격": _cpx * (0.979 if _is_buy else 1.021),
                         "종가": _cpx,
-                        "엔진": _leg,
+                        "엔진": _strat_kor,
                         "종목": _tkr,
-                        "액션": _act,
+                        "액션": _act_kor,
                         "손익": f"${_pnl_v:+,.0f}" if not _is_buy else "진입",
-                        "설명": (
-                            f"{'롱변기' if _leg=='LONG' else '양변기-' + _leg} "
-                            f"{'▲ 진입' if _is_buy else '▼ 청산'} ({_tkr})"
-                        ),
+                        "설명": f"{_strat_kor} {_act_kor} ({_tkr})",
                     }
                     (_buy_rows if _is_buy else _sell_rows).append(_row)
 
@@ -2492,11 +2500,20 @@ elif page == "📔 매매일지":
         ].copy()
         if not _trades_win.empty:
             st.markdown("**📋 해당 기간 거래 내역**")
-            _tw = _trades_win[["date", "leg", "ticker", "action", "qty", "price", "pnl"]].copy()
+            _tw = _trades_win[["date", "strategy", "leg", "ticker", "action", "qty", "price", "pnl"]].copy()
             _tw["date"] = _tw["date"].dt.strftime("%Y-%m-%d")
+            _tw["엔진"] = _tw.apply(lambda r: {
+                "longbyungi": "롱변기", "goldenbyungi": "황금변기",
+                "yangbyungi": "양변기-" + ("롱" if r["leg"] == "LONG" else "숏"),
+            }.get(r["strategy"], r["strategy"]), axis=1)
+            _tw["액션"] = _tw["action"].map({
+                "STOP_BUY": "▲ 진입", "LOC_SELL": "▼ LOC 청산",
+                "MOO_SELL": "▼ MOO 청산", "STOP": "↩ 취소",
+            }).fillna(_tw["action"])
             _tw["price"] = _tw["price"].apply(lambda x: f"${float(x):,.2f}" if pd.notna(x) else "—")
             _tw["pnl"]   = _tw["pnl"].apply(lambda x: f"${float(x):+,.0f}" if pd.notna(x) else "—")
-            _tw["qty"]   = _tw["qty"].apply(lambda x: f"{float(x):,.4f}" if pd.notna(x) else "—")
+            _tw["qty"]   = _tw["qty"].apply(lambda x: f"{float(x):,.2f}" if pd.notna(x) else "—")
+            _tw = _tw[["date", "엔진", "ticker", "액션", "qty", "price", "pnl"]]
             _tw.columns  = ["날짜", "엔진", "종목", "액션", "수량", "가격", "손익"]
             st.dataframe(_tw, use_container_width=True, hide_index=True)
         else:
