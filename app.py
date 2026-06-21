@@ -2243,7 +2243,116 @@ elif page == "📔 매매일지":
         })
 
     _view_df = pd.DataFrame(_rows)
-    st.dataframe(_view_df, use_container_width=True, hide_index=True, height=520)
+    _date_order = list(_daily_rec.iloc[::-1].index)  # 테이블 행 순서와 동일 (최신→구)
+
+    st.caption("💡 행을 클릭하면 해당 날짜 전후 ±15 거래일 차트를 볼 수 있습니다.")
+    _sel_event = st.dataframe(
+        _view_df, use_container_width=True, hide_index=True, height=520,
+        on_select="rerun", selection_mode="single-row"
+    )
+
+    # ── 드릴다운 ──────────────────────────────────────────────
+    _sel_rows = _sel_event.selection.rows
+    if _sel_rows:
+        _sel_date = _date_order[_sel_rows[0]]
+        _sel_ts = pd.Timestamp(_sel_date)
+        _sel_date_str = _sel_ts.strftime("%Y-%m-%d")
+
+        st.markdown("---")
+        st.markdown(f"### 🔍 {_sel_date_str} 드릴다운 (±15 거래일)")
+
+        # ±15 거래일 윈도우
+        _all_j_dates = _daily_j.index
+        _j_pos = _all_j_dates.searchsorted(_sel_ts)
+        _W = 15
+        _win = _daily_j.iloc[max(0, _j_pos - _W): min(len(_all_j_dates), _j_pos + _W + 1)].copy()
+
+        # 선택 날짜 메타
+        _sin = _sel_ts in _win.index
+        _sel_ret  = float(_win.at[_sel_ts, "CHAMP_ret_%"])  if _sin and "CHAMP_ret_%"   in _win.columns else float("nan")
+        _rg_sel   = _win.at[_sel_ts, "regime"]              if _sin and "regime"         in _win.columns else "—"
+        _vix_sel  = float(_win.at[_sel_ts, "VIX"])          if _sin and "VIX"            in _win.columns else float("nan")
+        _k_sel    = float(_win.at[_sel_ts, "k_today"])      if _sin and "k_today"        in _win.columns else float("nan")
+        _act_sel  = _win.at[_sel_ts, "active_CHAMP"]        if _sin and "active_CHAMP"   in _win.columns else "—"
+
+        _rg_emoji = {"BULL": "🟢", "NEUTRAL": "🟡", "BEAR": "🔴"}.get(_rg_sel, "")
+        _ret_color = "#ef4444" if not pd.isna(_sel_ret) and _sel_ret < 0 else "#22c55e"
+
+        st.markdown(f"""
+<div style="background:#1e293b;border-left:4px solid {_ret_color};padding:12px 16px;border-radius:8px;margin-bottom:16px">
+  <span style="color:#94a3b8;font-size:0.85em">선택 날짜</span><br>
+  <span style="color:#f1f5f9;font-size:1.25em;font-weight:700">{_sel_date_str}</span>
+  &nbsp;&nbsp;<span style="color:{_ret_color};font-size:1.5em;font-weight:700">{_sel_ret:+.2f}%</span><br>
+  <span style="color:#94a3b8;font-size:0.88em">레짐: {_rg_emoji} {_rg_sel} &nbsp;·&nbsp; VIX: {_vix_sel:.1f} &nbsp;·&nbsp; k_today: {_k_sel:.3f} &nbsp;·&nbsp; 엔진: {_act_sel}</span>
+</div>
+""", unsafe_allow_html=True)
+
+        import altair as _alt_dd
+
+        # ── 자산 패널 ──
+        _eq_win = _eq_j.reindex(_win.index)["CHAMP_NOMARGIN"].dropna()
+        _ret_win = _win.reindex(_eq_win.index)["CHAMP_ret_%"] if "CHAMP_ret_%" in _win.columns else pd.Series(dtype=float)
+        _eq_df = pd.DataFrame({
+            "날짜": _eq_win.index,
+            "자산": _eq_win.values,
+            "수익률": _ret_win.reindex(_eq_win.index).values,
+        })
+        _vline_src = pd.DataFrame({"날짜": [_sel_ts]})
+        _vline = _alt_dd.Chart(_vline_src).mark_rule(color="#fbbf24", strokeWidth=2, strokeDash=[6, 3]).encode(x="날짜:T")
+
+        _eq_line = _alt_dd.Chart(_eq_df).mark_line(color="#3b82f6", strokeWidth=2).encode(
+            x=_alt_dd.X("날짜:T", title=None, axis=_alt_dd.Axis(labels=False)),
+            y=_alt_dd.Y("자산:Q", title="V1 자산 ($)", scale=_alt_dd.Scale(zero=False),
+                        axis=_alt_dd.Axis(format="$,.0f")),
+            tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"),
+                     _alt_dd.Tooltip("자산:Q", title="자산", format="$,.0f"),
+                     _alt_dd.Tooltip("수익률:Q", title="수익률", format="+.2f")],
+        )
+        _sel_eq_val = float(_eq_j.at[_sel_ts, "CHAMP_NOMARGIN"]) if _sel_ts in _eq_j.index else None
+        if _sel_eq_val:
+            _sel_dot = _alt_dd.Chart(pd.DataFrame({"날짜": [_sel_ts], "자산": [_sel_eq_val]})).mark_point(
+                size=160, filled=True, color=_ret_color
+            ).encode(x="날짜:T", y="자산:Q")
+            _eq_line = _eq_line + _sel_dot
+        _eq_panel = (_eq_line + _vline).properties(height=160, title="V1 자산 추이")
+
+        # ── VIX 패널 ──
+        _vix_src = _win.reset_index()[["date", "VIX"]].rename(columns={"date": "날짜"}).dropna(subset=["VIX"])
+        _vix_panel = (_alt_dd.Chart(_vix_src).mark_line(color="#f97316", strokeWidth=1.5).encode(
+            x=_alt_dd.X("날짜:T", title=None, axis=_alt_dd.Axis(labels=False)),
+            y=_alt_dd.Y("VIX:Q", title="VIX", scale=_alt_dd.Scale(zero=False)),
+            tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"), _alt_dd.Tooltip("VIX:Q", format=".1f")],
+        ) + _vline).properties(height=100, title="VIX (공포지수)")
+
+        # ── k_today 패널 ──
+        _k_src = _win.reset_index()[["date", "k_today"]].rename(columns={"date": "날짜"}).dropna(subset=["k_today"])
+        _k_panel = (_alt_dd.Chart(_k_src).mark_line(color="#a78bfa", strokeWidth=1.5).encode(
+            x=_alt_dd.X("날짜:T", title="날짜"),
+            y=_alt_dd.Y("k_today:Q", title="k_today", scale=_alt_dd.Scale(domain=[0, 1.4])),
+            tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"), _alt_dd.Tooltip("k_today:Q", format=".3f")],
+        ) + _vline).properties(height=100, title="k_today (배분 비중)")
+
+        st.altair_chart(
+            _alt_dd.vconcat(_eq_panel, _vix_panel, _k_panel).resolve_scale(x="shared"),
+            use_container_width=True,
+        )
+
+        # ── 거래 내역 ──
+        _trades_win = _trades_j[
+            (_trades_j["date"].dt.normalize() >= _win.index[0]) &
+            (_trades_j["date"].dt.normalize() <= _win.index[-1])
+        ].copy()
+        if not _trades_win.empty:
+            st.markdown("**📋 해당 기간 거래 내역**")
+            _tw = _trades_win[["date", "leg", "ticker", "action", "qty", "price", "pnl"]].copy()
+            _tw["date"] = _tw["date"].dt.strftime("%Y-%m-%d")
+            _tw["price"] = _tw["price"].apply(lambda x: f"${float(x):,.2f}" if pd.notna(x) else "—")
+            _tw["pnl"]   = _tw["pnl"].apply(lambda x: f"${float(x):+,.0f}" if pd.notna(x) else "—")
+            _tw["qty"]   = _tw["qty"].apply(lambda x: f"{float(x):,.4f}" if pd.notna(x) else "—")
+            _tw.columns  = ["날짜", "엔진", "종목", "액션", "수량", "가격", "손익"]
+            st.dataframe(_tw, use_container_width=True, hide_index=True)
+        else:
+            st.info("해당 기간 내 거래 없음.")
 
     if st.button("💾 CSV 준비", key="j2_dl_prep"):
         st.session_state["j2_csv"] = _view_df.to_csv(index=False).encode("utf-8-sig")
