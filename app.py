@@ -967,7 +967,7 @@ elif page == "🎲 확률 분포":
             color="#4ade80", strokeWidth=1.5, strokeDash=[4, 2]
         ).encode(x="x:Q")
         _boot_charts.append((_alt.layer(_band, _med, _p05l, _p95l)
-            .properties(title=f"{_row['지표']}: P5={_row['low']:.2f} | P50={_row['p50']:.2f} | P95={_row['p95']:.2f}", height=80, width=200)
+            .properties(title=f"{_row['지표']}: P5={_row['low']:.2f} | P50={_row['p50']:.2f} | P95={_row['high']:.2f}", height=80, width=200)
         ))
     st.altair_chart(_alt.hconcat(*_boot_charts), use_container_width=True)
     st.caption("파란 실선=중앙값(P50) · 회색 막대=P5~P95 구간 · 빨간점선=P5(최악) · 초록점선=P95(최선)")
