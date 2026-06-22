@@ -2187,6 +2187,7 @@ elif page == "📔 매매일지":
                 _soxl_df["날짜_str"] = pd.to_datetime(_soxl_df["날짜"]).dt.strftime("%Y-%m-%d")
                 _soxl_df["날짜_표시"] = pd.to_datetime(_soxl_df["날짜"]).dt.strftime("%m/%d")
                 _close_map = dict(zip(_soxl_df["날짜_str"], _soxl_df["종가"].astype(float)))
+                _open_map = dict(zip(_soxl_df["날짜_str"], _soxl_df["시가"].astype(float)))
                 _x_domain = list(_soxl_df["날짜_표시"])
 
                 # daily 컨텍스트
@@ -2204,29 +2205,34 @@ elif page == "📔 매매일지":
                                     axis=_alt_dd.Axis(labels=False, ticks=False))
                 _x_enc_lbl = _alt_dd.X("날짜_표시:O", sort=_x_domain, title="날짜",
                                         axis=_alt_dd.Axis(labelAngle=0))
-                _y_enc = _alt_dd.Y("종가:Q", title="SOXL 종가 ($)",
-                                    scale=_alt_dd.Scale(zero=False, nice=True, padding=18),
+                _soxl_df["일중%"] = ((_soxl_df["종가"] / _soxl_df["시가"] - 1) * 100).round(2)
+                _y_scale = _alt_dd.Scale(zero=False, nice=True, padding=12)
+                _y_enc = _alt_dd.Y("종가:Q", title="SOXL ($)", scale=_y_scale,
                                     axis=_alt_dd.Axis(format="$,.2f"))
 
                 _soxl_tip = [
                     _alt_dd.Tooltip("날짜_str:N",  title="날짜"),
-                    _alt_dd.Tooltip("종가:Q",       title="SOXL 종가",  format="$,.2f"),
                     _alt_dd.Tooltip("시가:Q",       title="시가",        format="$,.2f"),
                     _alt_dd.Tooltip("고가:Q",       title="고가",        format="$,.2f"),
                     _alt_dd.Tooltip("저가:Q",       title="저가",        format="$,.2f"),
+                    _alt_dd.Tooltip("종가:Q",       title="종가",        format="$,.2f"),
+                    _alt_dd.Tooltip("일중%:Q",      title="일중 변동(시가→종가)", format="+.2f"),
                     _alt_dd.Tooltip("V1수익률:Q",   title="V1 수익률",   format="+.2f"),
                     _alt_dd.Tooltip("레짐:N",       title="레짐"),
                     _alt_dd.Tooltip("VIX:Q",        title="VIX",         format=".1f"),
                     _alt_dd.Tooltip("k값:Q",        title="k_today",     format=".3f"),
                 ]
-                # 종가 라인 + 매 거래일 점
-                _soxl_line = _alt_dd.Chart(_soxl_df).mark_line(
-                    color="#60a5fa", strokeWidth=2.5,
-                    point=_alt_dd.OverlayMarkDef(color="#60a5fa", size=55, filled=True),
-                ).encode(x=_x_enc, y=_y_enc, tooltip=_soxl_tip)
-                _soxl_area = _alt_dd.Chart(_soxl_df).mark_area(
-                    color="#60a5fa", opacity=0.08
-                ).encode(x=_x_enc, y=_y_enc)
+                # 캔들스틱: 위크(저가-고가) + 바디(시가-종가), 양봉=초록·음봉=빨강
+                _oc_color = _alt_dd.condition(
+                    "datum.종가 >= datum.시가", _alt_dd.value("#22c55e"), _alt_dd.value("#ef4444"))
+                _soxl_wick = _alt_dd.Chart(_soxl_df).mark_rule(strokeWidth=1.4).encode(
+                    x=_x_enc,
+                    y=_alt_dd.Y("저가:Q", title="SOXL ($)", scale=_y_scale, axis=_alt_dd.Axis(format="$,.2f")),
+                    y2="고가:Q", color=_oc_color, tooltip=_soxl_tip)
+                _soxl_body = _alt_dd.Chart(_soxl_df).mark_bar(size=11).encode(
+                    x=_x_enc, y=_alt_dd.Y("시가:Q", scale=_y_scale), y2="종가:Q",
+                    color=_oc_color, tooltip=_soxl_tip)
+                _soxl_line = _soxl_wick + _soxl_body   # (이름 유지) 캔들 = 위크+바디
 
                 # 선택일 강조: 수직선 + 링 마커 + 종가 라벨
                 _sel_soxl_row = _soxl_df[_soxl_df["날짜_str"] == _sel_date_str].copy()
@@ -2262,6 +2268,8 @@ elif page == "📔 매매일지":
                         continue
                     _is_buy  = _tr["action"] == "STOP_BUY"
                     _pnl_v   = float(_tr["pnl"]) if pd.notna(_tr["pnl"]) else 0.0
+                    _px      = float(_tr["price"]) if pd.notna(_tr["price"]) else None
+                    _qty     = float(_tr["qty"]) if pd.notna(_tr["qty"]) else None
                     _strat   = str(_tr["strategy"])
                     _leg     = str(_tr["leg"])
                     _tkr     = str(_tr["ticker"])
@@ -2277,16 +2285,31 @@ elif page == "📔 매매일지":
                         "MOO_SELL": "▼ MOO 청산",
                         "STOP":     "↩ 스탑 취소",
                     }.get(_act, _act)
+                    if _is_buy:
+                        # 진입: 시가 대비 돌파%(=얼마 올라서 진입했나). SOXL 레그만(시가 데이터 보유)
+                        _open_px = _open_map.get(_td_str)
+                        _brk = ((_px / _open_px - 1) * 100) if (_px and _open_px and _tkr == "SOXL") else None
+                        _detail = f"{_strat_kor} 진입 {_tkr} ${_px:,.2f}" if _px else f"{_strat_kor} 진입 {_tkr}"
+                        if _brk is not None:
+                            _detail += f" — 시가 ${_open_px:,.2f}에서 +{_brk:.2f}% 돌파 진입"
+                        _lblval = f"+{_brk:.1f}%" if _brk is not None else "진입"
+                    else:
+                        # 청산: 실현 수익률(leg-aware: long=exit-pps, short=exit+pps) + 손익$
+                        _ret = None
+                        if _px and _qty:
+                            _pps = _pnl_v / _qty
+                            _entry_est = (_px + _pps) if _leg == "SHORT" else (_px - _pps)
+                            if _entry_est:
+                                _ret = (_pps / _entry_est) * 100
+                        _detail = (f"{_strat_kor} {_act_kor} {_tkr} ${_px:,.2f} · 손익 ${_pnl_v:+,.0f}"
+                                   if _px else f"{_strat_kor} {_act_kor} {_tkr} · 손익 ${_pnl_v:+,.0f}")
+                        if _ret is not None:
+                            _detail += f" (수익률 {_ret:+.2f}%)"
+                        _lblval = f"{_ret:+.1f}%" if _ret is not None else f"${_pnl_v:+,.0f}"
                     _row = {
-                        "날짜_표시": _td_disp,
-                        "날짜_str":  _td_str,
-                        "가격": _cpx * (0.979 if _is_buy else 1.021),
-                        "종가": _cpx,
-                        "엔진": _strat_kor,
-                        "종목": _tkr,
-                        "액션": _act_kor,
-                        "손익": f"${_pnl_v:+,.0f}" if not _is_buy else "진입",
-                        "설명": f"{_strat_kor} {_act_kor} ({_tkr})",
+                        "날짜_표시": _td_disp, "날짜_str": _td_str, "종가": _cpx,
+                        "엔진": _strat_kor, "종목": _tkr, "액션": _act_kor,
+                        "상세": _detail, "라벨값": _lblval, "손익v": _pnl_v,
                     }
                     (_buy_rows if _is_buy else _sell_rows).append(_row)
 
@@ -2304,16 +2327,21 @@ elif page == "📔 매매일지":
                     for _r in _grp:
                         _bd.setdefault(_r["날짜_표시"], []).append(_r)
                     for _disp, _lst in _bd.items():
-                        _det = " · ".join(f"{x['엔진']} {x['액션']}({x['종목']})" for x in _lst)
+                        _det = "  /  ".join(x["상세"] for x in _lst)
+                        if len(_lst) == 1:
+                            _lbl = _lst[0]["라벨값"]
+                        elif _lane == "▼ 청산":
+                            _lbl = f"{len(_lst)}건 ${sum(x['손익v'] for x in _lst):+,.0f}"
+                        else:
+                            _lbl = f"{len(_lst)}건"
                         _strip_rows.append({
                             "날짜_표시": _disp, "날짜_str": _lst[0]["날짜_str"], "구분": _lane,
-                            "건수": len(_lst), "건수라벨": (str(len(_lst)) if len(_lst) > 1 else ""),
-                            "내역": _det,
+                            "건수": len(_lst), "라벨": _lbl, "내역": _det,
                         })
 
                 _sel_close_txt = f" · 선택일 종가 **${_sel_close:,.2f}**" if _sel_close is not None else ""
-                st.markdown(f"**📈 SOXL 선택일 전후 흐름**{_sel_close_txt}")
-                st.caption("🟡 선택일(수직선·링) · 위=가격 / 아래 스트립 = 🟢▲ 진입 · 🔴▼ 청산 (같은 날도 레인 분리). 숫자=당일 건수, 호버 시 상세")
+                st.markdown(f"**🕯 SOXL 선택일 전후 캔들**{_sel_close_txt}")
+                st.caption("위=캔들(양봉🟢/음봉🔴, 호버로 OHLC·일중변동) · 아래 스트립 = 🟢▲ 진입(시가 대비 +돌파%) · 🔴▼ 청산(실현 수익률). 같은 날도 레인 분리, 호버로 상세")
 
                 if _strip_rows:
                     _strip_df = pd.DataFrame(_strip_rows)
@@ -2337,12 +2365,12 @@ elif page == "📔 매매일지":
                             _alt_dd.Tooltip("날짜_str:N", title="날짜"),
                             _alt_dd.Tooltip("구분:N", title="구분"),
                             _alt_dd.Tooltip("건수:Q", title="건수"),
-                            _alt_dd.Tooltip("내역:N", title="내역"),
+                            _alt_dd.Tooltip("내역:N", title="상세"),
                         ],
                     ))
                     _strip_layers.append(_alt_dd.Chart(_strip_df).mark_text(
-                        dx=11, color="#e5e7eb", fontSize=10, fontWeight="bold"
-                    ).encode(x=_x_enc_lbl, y=_strip_y, text="건수라벨:N"))
+                        dy=-13, color="#e5e7eb", fontSize=10, fontWeight="bold"
+                    ).encode(x=_x_enc_lbl, y=_strip_y, text="라벨:N"))
                     _strip_panel = _alt_dd.layer(*_strip_layers).properties(height=88)
                     _final_chart = _alt_dd.vconcat(_price_panel, _strip_panel).resolve_scale(x="shared")
                 else:
