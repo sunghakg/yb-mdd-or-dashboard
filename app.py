@@ -2120,20 +2120,27 @@ elif page == "📔 매매일지":
     _view_df = pd.DataFrame(_rows)
     _date_order = list(_daily_rec.iloc[::-1].index)  # 테이블 행 순서와 동일 (최신→구)
 
-    st.caption("💡 행을 클릭하면 해당 날짜 전후 캔들 차트를 볼 수 있습니다. 다른 행을 클릭하면 그 날짜로 바뀝니다.")
-    # ★key 필수: 없으면 첫 선택 후 다른 행 클릭이 안정적으로 안 먹어 캔들이 안 바뀜
+    st.caption("💡 표에서 행을 클릭하거나, 아래 **드릴다운 날짜**에서 직접 골라 그 날짜 전후 캔들을 봅니다.")
     _sel_event = st.dataframe(
         _view_df, use_container_width=True, hide_index=True, height=520,
         on_select="rerun", selection_mode="single-row", key="j2_journal_table"
     )
 
     # ── 드릴다운 ──────────────────────────────────────────────
-    # key 덕에 _sel_rows가 클릭마다 갱신·rerun에도 유지됨. 선택 날짜를 session_state에도
-    # 기억(기간 변경에도 견고 + 슬라이더 등 rerun에 드릴다운 유지).
+    # 날짜 선택은 selectbox(표준 위젯=신뢰성)를 주 수단으로. 표 행 클릭은 selectbox 값에
+    # 동기화만 함(표 selection은 rerun에 불안정해서 단독으로 쓰지 않음).
+    _date_opts = [d.strftime("%Y-%m-%d") for d in _date_order]   # 최신→구
     _sel_rows = _sel_event.selection.rows
-    if _sel_rows and _sel_rows[0] < len(_date_order):
-        st.session_state["j2_sel_date"] = _date_order[_sel_rows[0]].strftime("%Y-%m-%d")
-    _sel_date_str = st.session_state.get("j2_sel_date")
+    if _sel_rows and _sel_rows[0] < len(_date_opts):
+        st.session_state["j2_sel_date_pick"] = _date_opts[_sel_rows[0]]   # 행 클릭 → selectbox 동기화
+    if _date_opts and st.session_state.get("j2_sel_date_pick") not in _date_opts:
+        st.session_state["j2_sel_date_pick"] = _date_opts[0]              # 기간 변경 시 첫(최신)일로
+
+    _sel_date_str = None
+    if _date_opts:
+        _sel_date_str = st.selectbox("🔍 드릴다운 날짜 (표 행 클릭으로도 선택됨)",
+                                     options=_date_opts, key="j2_sel_date_pick")
+
     if _sel_date_str and pd.Timestamp(_sel_date_str) in _daily_j.index:
         _sel_ts = pd.Timestamp(_sel_date_str)
         _sel_date = _sel_ts
