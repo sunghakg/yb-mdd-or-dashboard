@@ -10,7 +10,7 @@ Bootstrap 5,000 paths: p50 Cal 2.16 / MDD -34.9% / P(MDD<-30%) = 82.0%
 
 탭 구성:
 1. 📊 Overview — V1 CHAMP_NOMARGIN spec + BASE 대비 알파
-2. 📋 거래 내역 — CHAMP_NOMARGIN trades + equity curve (자유 시드/기간)
+   (구 '📋 거래 내역' 탭은 2026-06-21 '📔 매매일지'로 통합 — 시드 환산·필터·CSV 거래 로그 포함)
 3. 📈 Stress Tests — 8개 crisis × BASE vs CHAMP
 4. 🎲 Bootstrap — 5,000 paths 신뢰구간
 5. 📅 Year-by-Year — 17년 BASE vs CHAMP 연도별
@@ -264,7 +264,6 @@ with st.sidebar:
 """, unsafe_allow_html=True)
     _pages = [
         "📊 백테스트",
-        "📋 거래 내역",
         "📈 위기 방어력",
         "🎲 확률 분포",
         "📅 연도별 성과",
@@ -477,370 +476,6 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
     )
     st.altair_chart(_eq_altair, use_container_width=True)
     st.caption("V1 CHAMP_NOMARGIN vs 고정비중 BASE(k=0.65). 구간 시작 기준 $10만으로 재조정.")
-
-
-# ───────────────────────────────────────────────────────────
-# TAB 2: 거래 내역
-# ───────────────────────────────────────────────────────────
-elif page == "📋 거래 내역":
-    st.subheader("📋 V1 전략 거래 내역 — 16년 전체 (2010~현재)")
-    st.caption("SOXL 상장일(2010-05-25)부터 현재까지의 백테스트 거래 내역. yfinance 일봉 OHLC 기준. 매일 자동 갱신.")
-
-    # ── 사용자 정의 시작 자본 ──
-    seed_col1, seed_col2 = st.columns([1, 3])
-    user_seed = seed_col1.number_input(
-        "시작 자본 ($)", min_value=100, max_value=10_000_000,
-        value=10_000, step=1_000, key="user_seed_input",
-        help="백테는 $100K 시드로 실행. 이 값으로 모든 $ 결과를 비례 스케일링합니다. % 수익률은 변하지 않음."
-    )
-    seed_col2.markdown(
-        f"<div style='padding-top:1.7em;color:#888'>"
-        f"💡 모든 $ 값이 <b>${user_seed:,.0f}</b> 시드 기준으로 환산됩니다. % 수익률은 동일."
-        f"</div>",
-        unsafe_allow_html=True
-    )
-
-    # ── Load equity curves ──
-    # 캐시 키에 file mtime 추가: 파일 갱신되면 자동 invalidate (Streamlit Cloud 캐시 stale 해결)
-    def _mtime(p):
-        try: return p.stat().st_mtime
-        except Exception: return 0
-
-    @st.cache_data
-    def _load_eq(_mtime_key):
-        return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
-
-    @st.cache_data
-    def _load_daily(_mtime_key):
-        return pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
-
-    @st.cache_data
-    def _load_v2_for_overlay(_mtime_key):
-        if not (V2DIR / "equity_paths.csv").exists():
-            return None
-        return pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
-
-    eq_all = _load_eq(_mtime(CHAMP / "equity_curves.csv"))
-    daily_all = _load_daily(_mtime(CHAMP / "daily.csv"))
-    eq_v2_all = _load_v2_for_overlay(_mtime(V2DIR / "equity_paths.csv")) if SHOW_V2 else None
-
-    # ── Date range picker ──
-    bt_min_d = eq_all.index.min().date()
-    bt_max_d = eq_all.index.max().date()
-    # 기본값: 최근 3개월 (16년 전체보다 ~67× 빠름). 사용자가 preset/reset으로 전체 조회 가능.
-    default_from = max(bt_min_d, (pd.Timestamp(bt_max_d) - pd.Timedelta(days=90)).date())
-
-    st.markdown(f"### 🗓 자유 시드/기간 — CHAMP_NOMARGIN 재집계")
-    st.caption(f"백테 데이터: `{bt_min_d}` ~ **`{bt_max_d}`**. 기본값은 최근 3개월 (빠른 로딩). "
-               f"16년 전체 보고 싶으면 아래 '16년 전체' 버튼 클릭.")
-
-    def _apply_preset(st_d, en_d):
-        st.session_state["champ_from"] = pd.Timestamp(st_d).date()
-        st.session_state["champ_to"] = pd.Timestamp(en_d).date()
-
-    def _reset_dates():
-        st.session_state["champ_from"] = default_from
-        st.session_state["champ_to"] = bt_max_d
-
-    d1, d2, d3 = st.columns([2, 2, 1])
-    with d1:
-        d_from = st.date_input("From", value=default_from, min_value=bt_min_d, max_value=bt_max_d, key="champ_from")
-    with d2:
-        d_to = st.date_input("To", value=bt_max_d, min_value=bt_min_d, max_value=bt_max_d, key="champ_to")
-    with d3:
-        st.markdown("&nbsp;")
-        st.button("최근 3개월", on_click=_reset_dates, key="champ_reset")
-
-    st.markdown("**빠른 선택**")
-    pcols = st.columns(11)
-    _safe_last = lambda dt_str: max(bt_min_d, pd.Timestamp(dt_str).date())
-    presets = [
-        ("16년 전체", str(bt_min_d), str(bt_max_d)),
-        ("최근 1년", str(_safe_last((pd.Timestamp(bt_max_d) - pd.DateOffset(years=1)).strftime("%Y-%m-%d"))), str(bt_max_d)),
-        ("최근 3년", str(_safe_last((pd.Timestamp(bt_max_d) - pd.DateOffset(years=3)).strftime("%Y-%m-%d"))), str(bt_max_d)),
-        ("최근 5년", str(_safe_last((pd.Timestamp(bt_max_d) - pd.DateOffset(years=5)).strftime("%Y-%m-%d"))), str(bt_max_d)),
-        ("2010s (10년)", str(bt_min_d), "2019-12-31"),
-        ("2020 Covid", "2020-01-02", "2020-06-30"),
-        ("2022 폭락", "2022-01-01", "2022-12-31"),
-        ("2024-08 쇼크", "2024-07-15", "2024-09-15"),
-        ("2025 관세", "2025-03-01", "2025-05-15"),
-        ("최근 5년", _safe_last((bt_max_d - pd.Timedelta(days=365*5)).strftime("%Y-%m-%d")).strftime("%Y-%m-%d"), str(bt_max_d)),
-        ("최근 1년", _safe_last((bt_max_d - pd.Timedelta(days=365)).strftime("%Y-%m-%d")).strftime("%Y-%m-%d"), str(bt_max_d)),
-    ]
-    for col, (lbl, st_d, en_d) in zip(pcols, presets):
-        col.button(lbl, key=f"champ_preset_{lbl}", on_click=_apply_preset, args=(st_d, en_d))
-
-    # ── Slice ──
-    eq_period = eq_all.loc[pd.Timestamp(d_from):pd.Timestamp(d_to)]
-    daily_period = daily_all.loc[pd.Timestamp(d_from):pd.Timestamp(d_to)]
-
-    # Period-start equity → consistent rebase factor for stats + trade log.
-    # (선택 기간 첫 날의 raw equity로 user_seed 환산. 거래 로그 PnL/qty도 동일 스케일 적용)
-    if len(eq_period) >= 1:
-        seed_in_period_champ = float(eq_period["CHAMP_NOMARGIN"].iloc[0])
-        seed_in_period_base = float(eq_period["BASE"].iloc[0])
-        scale_champ = user_seed / seed_in_period_champ
-        scale_base = user_seed / seed_in_period_base
-    else:
-        seed_in_period_champ = seed_in_period_base = 100_000.0
-        scale_champ = scale_base = user_seed / 100_000.0
-
-    if len(eq_period) < 2:
-        st.warning(f"선택 기간({d_from} ~ {d_to})의 데이터 부족 ({len(eq_period)}일).")
-    else:
-        eq_user_champ = eq_period["CHAMP_NOMARGIN"] * scale_champ
-        eq_user_base = eq_period["BASE"] * scale_base
-
-        def _stats(eq):
-            start = float(eq.iloc[0])
-            end = float(eq.iloc[-1])
-            ret = end / start - 1
-            n_days = len(eq)
-            n_years = n_days / 252
-            cagr = (end / start) ** (1/n_years) - 1 if n_years > 0 else 0
-            cm = eq.cummax(); dd = eq / cm - 1
-            mdd = float(dd.min())
-            rets = eq.pct_change().dropna()
-            sh = float(rets.mean() / rets.std() * np.sqrt(252)) if rets.std() > 0 else 0
-            cal = cagr / abs(mdd) if mdd < 0 else float("inf")
-            return {"end": end, "ret": ret, "cagr": cagr, "mdd": mdd, "sharpe": sh, "calmar": cal, "days": n_days, "years": n_years}
-
-        s_champ = _stats(eq_user_champ)
-        s_base = _stats(eq_user_base)
-
-        st.markdown(f"#### 📐 선택 기간 성과 — 시드 ${user_seed:,.0f}, {d_from} → {d_to} ({s_champ['days']} 거래일, {s_champ['years']:.2f}년)")
-        st.markdown("**CHAMP_NOMARGIN (현 운영 후보)**")
-        pc1, pc2, pc3, pc4 = st.columns(4)
-        pc1.metric("Final Equity", _money(s_champ["end"]), f"{s_champ['ret']*100:+,.2f}%")
-        pc2.metric("CAGR", f"{s_champ['cagr']*100:+.2f}%", f"BASE {s_base['cagr']*100:+.2f}%")
-        pc3.metric("MDD", f"{s_champ['mdd']*100:+.2f}%", f"BASE {s_base['mdd']*100:+.2f}%")
-        pc4.metric("Calmar", f"{s_champ['calmar']:.2f}" if s_champ['calmar'] != float("inf") else "∞",
-                    f"BASE {s_base['calmar']:.2f}")
-        pc5, pc6, pc7, pc8 = st.columns(4)
-        pc5.metric("Sharpe", f"{s_champ['sharpe']:.2f}", f"BASE {s_base['sharpe']:.2f}")
-        pc6.metric("BASE Final (동일 기간)", _money(s_base["end"]),
-                    f"CHAMP × {s_champ['end']/s_base['end']:.2f}")
-        # regime / active stats
-        if "regime" in daily_period.columns:
-            rs = daily_period["regime"].value_counts(normalize=True) * 100
-            pc7.metric("주 regime", rs.index[0] if len(rs) else "—",
-                       f"{rs.iloc[0]:.0f}% of period" if len(rs) else "—")
-        if "active_CHAMP" in daily_period.columns:
-            as_ = daily_period["active_CHAMP"].value_counts(normalize=True) * 100
-            pc8.metric("주 sub-strategy", as_.index[0] if len(as_) else "—",
-                       f"{as_.iloc[0]:.0f}% of period" if len(as_) else "—")
-
-        # ── Equity curve ──
-        _eq_title = "CHAMP vs BASE vs V2_FINAL" if SHOW_V2 else "CHAMP vs BASE"
-        st.markdown(f"#### 📈 Equity Curve — ${user_seed:,.0f} 시드 기준 ({_eq_title})")
-        chart_dict = {
-            "V1 CHAMP_NOMARGIN ($)": eq_user_champ.values,
-            "BASE k=0.65 ($)": eq_user_base.values,
-        }
-        chart_index = eq_period.index
-
-        # V2_FINAL overlay (rebase to V1 start-of-period for fair comparison)
-        if eq_v2_all is not None and "V2_FINAL" in eq_v2_all.columns:
-            v2_period = eq_v2_all.loc[pd.Timestamp(d_from):pd.Timestamp(d_to)]
-            if len(v2_period) >= 2:
-                v2_seed_in = float(v2_period["V2_FINAL"].iloc[0])
-                scale_v2_for_overlay = user_seed / v2_seed_in
-                v2_user = v2_period["V2_FINAL"] * scale_v2_for_overlay
-                # align indices (V2 file may extend past CHAMP file by daily updates)
-                v2_aligned = v2_user.reindex(chart_index).ffill()
-                chart_dict["V2_FINAL ($)"] = v2_aligned.values
-
-        chart_period = pd.DataFrame(chart_dict, index=chart_index)
-        import altair as _alt
-        _cp_cols = list(chart_period.columns)
-        _cp_melt = chart_period.reset_index().melt(id_vars=["date"], var_name="전략", value_name="자산")
-        _cp_colors = ["#3b82f6", "#6b7280", "#f59e0b"][:len(_cp_cols)]
-        st.altair_chart(
-            _alt.Chart(_cp_melt).mark_line(strokeWidth=1.5).encode(
-                x=_alt.X("date:T", title="날짜"),
-                y=_alt.Y("자산:Q", title="자산 ($)", axis=_alt.Axis(format="$,.0f")),
-                color=_alt.Color("전략:N", scale=_alt.Scale(domain=_cp_cols, range=_cp_colors)),
-                tooltip=[
-                    _alt.Tooltip("date:T", title="날짜", format="%Y-%m-%d"),
-                    _alt.Tooltip("전략:N", title="전략"),
-                    _alt.Tooltip("자산:Q", title="자산", format="$,.0f"),
-                ],
-            ).properties(height=360),
-            use_container_width=True,
-        )
-
-        if eq_v2_all is not None:
-            v2_end = eq_v2_all.index.max().date()
-            v1_end = eq_period.index.max().date()
-            if v2_end > v1_end:
-                st.caption(
-                    f"ℹ️ V1/BASE 데이터는 `{v1_end}`까지, V2 데이터는 `{v2_end}`까지 "
-                    f"(daily 자동 갱신). V1 backtest도 함께 갱신되지만 위 차트는 선택 기간 끝점이 V1 데이터에 묶여있음."
-                )
-
-        # ── k_today / VIX scale 분포 ──
-        with st.expander("📊 선택 기간 내 k_today / VIX scale / 활성 alloc 분포"):
-            if "k_today" in daily_period.columns:
-                k1, k2, k3 = st.columns(3)
-                k_med = float(daily_period["k_today"].median())
-                k_mean = float(daily_period["k_today"].mean())
-                k_min = float(daily_period["k_today"].min())
-                k_max = float(daily_period["k_today"].max())
-                k1.metric("k_today median", f"{k_med:.3f}", f"mean {k_mean:.3f}")
-                k2.metric("k_today min/max", f"{k_min:.3f} / {k_max:.3f}")
-                if "VIX" in daily_period.columns:
-                    vix_med = float(daily_period["VIX"].median())
-                    k3.metric("VIX median", f"{vix_med:.1f}")
-                st.markdown("**일별 k_today (VIX-driven dynamic alloc multiplier)**")
-                import altair as _alt
-                _k_df = daily_period[["k_today"]].reset_index().rename(columns={"date":"날짜","k_today":"k_today"})
-                st.altair_chart(
-                    _alt.Chart(_k_df).mark_line(color="#3b82f6", strokeWidth=1.5).encode(
-                        x=_alt.X("날짜:T", title="날짜"),
-                        y=_alt.Y("k_today:Q", title="k_today", scale=_alt.Scale(zero=False)),
-                        tooltip=[_alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
-                                 _alt.Tooltip("k_today:Q", title="k_today", format=".3f")],
-                    ).properties(height=220),
-                    use_container_width=True,
-                )
-                if "VIX" in daily_period.columns:
-                    st.markdown("**일별 VIX (= 20일 때 k=base 0.65)**")
-                    import altair as _alt
-                    _vix_df = daily_period[["VIX"]].reset_index().rename(columns={"date":"날짜","VIX":"VIX"})
-                    st.altair_chart(
-                        _alt.Chart(_vix_df).mark_line(color="#f59e0b", strokeWidth=1.5).encode(
-                            x=_alt.X("날짜:T", title="날짜"),
-                            y=_alt.Y("VIX:Q", title="VIX", scale=_alt.Scale(zero=False)),
-                            tooltip=[_alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
-                                     _alt.Tooltip("VIX:Q", title="VIX", format=".2f")],
-                        ).properties(height=180),
-                        use_container_width=True,
-                    )
-
-            if "regime" in daily_period.columns:
-                rg1, rg2 = st.columns(2)
-                with rg1:
-                    rdf = (daily_period["regime"].value_counts(normalize=True) * 100).round(1)
-                    st.markdown("**Regime 분포 (일 비율)**")
-                    st.dataframe(
-                        pd.DataFrame({"Regime": rdf.index, "Days %": rdf.values}),
-                        use_container_width=True, hide_index=True
-                    )
-                with rg2:
-                    if "active_CHAMP" in daily_period.columns:
-                        adf = (daily_period["active_CHAMP"].value_counts(normalize=True) * 100).round(1)
-                        st.markdown("**Active sub-strategy 분포 (일 비율)**")
-                        st.dataframe(
-                            pd.DataFrame({"Sub-strategy": adf.index, "Days %": adf.values}),
-                            use_container_width=True, hide_index=True
-                        )
-
-    st.markdown("---")
-
-    # ── 16년 전체 헤드라인 (참고) ──
-    # 주의: 이 섹션은 "user_seed로 16년 전(2010-05-25)부터 시작했다면" 가정 (inception rebase).
-    # 거래 로그/선택 기간 성과 카드는 period-rebase (scale_champ) 사용. 두 카드가 다른 질문에 답함.
-    st.markdown("### 📊 16년 전체 캐시 성과 (참고 — 16년 전 시작 가정)")
-    fc1, fc2, fc3, fc4, fc5, fc6 = st.columns(6)
-    fc1.metric("기간", champ_summary["spec"]["period"])
-    fc2.metric("시드", f"${user_seed:,.0f}")
-    fc3.metric("CHAMP Final", _money(H_CHAMP["Final_mult"] * user_seed),
-               f"+{(H_CHAMP['Final_mult']-1)*100:,.0f}%")
-    fc4.metric("BASE Final", _money(H_BASE["Final_mult"] * user_seed),
-               f"+{(H_BASE['Final_mult']-1)*100:,.0f}%")
-    fc5.metric("Trades", f"{champ_summary['trades_count']:,}")
-    fc6.metric("$ ratio", f"×{H_CHAMP['Final_mult']/H_BASE['Final_mult']:.2f}")
-
-    # ── Trade log ──
-    st.markdown("---")
-    st.markdown("### 📒 CHAMP_NOMARGIN 거래 로그")
-
-    @st.cache_data
-    def _load_trades(_mtime_key):
-        t = pd.read_csv(CHAMP / "trades_champ.csv")
-        t["date"] = pd.to_datetime(t["date"])
-        return t
-
-    trades_all = _load_trades(_mtime(CHAMP / "trades_champ.csv"))
-
-    # Filters
-    tf1, tf2, tf3 = st.columns([2, 1, 1])
-    strat_sel = tf1.multiselect(
-        "Strategy", options=sorted(trades_all["strategy"].unique()),
-        default=sorted(trades_all["strategy"].unique()), key="champ_strat_filter"
-    )
-    action_sel = tf2.multiselect(
-        "Action", options=sorted(trades_all["action"].unique()),
-        default=sorted(trades_all["action"].unique()), key="champ_action_filter"
-    )
-    pnl_sel = tf3.radio("PnL", options=["전체", "수익만", "손실만"], horizontal=True, key="champ_pnl_filter")
-
-    # Period filter (use same date range from above)
-    tr_filt = trades_all[
-        (trades_all["date"] >= pd.Timestamp(d_from)) &
-        (trades_all["date"] <= pd.Timestamp(d_to)) &
-        trades_all["strategy"].isin(strat_sel) &
-        trades_all["action"].isin(action_sel)
-    ].copy()
-    if pnl_sel == "수익만":
-        tr_filt = tr_filt[tr_filt["pnl"] > 0]
-    elif pnl_sel == "손실만":
-        tr_filt = tr_filt[tr_filt["pnl"] < 0]
-
-    # Scale pnl + qty to user seed using period-rebase (선택 기간 성과 카드와 동일 스케일).
-    # 백테는 $100K base seed로 실행. period 첫 날 raw equity를 user_seed로 환산하는 factor를
-    # 동일 적용해야 거래 로그 합산 PnL이 equity curve 변화량과 일치함.
-    tr_filt["pnl_scaled"] = tr_filt["pnl"] * scale_champ
-    tr_filt["qty_int"] = (tr_filt["qty"] * scale_champ).round().astype(int)
-
-    # Headline
-    fc1, fc2, fc3, fc4 = st.columns(4)
-    fc1.metric("Trade events", f"{len(tr_filt):,}")
-    realized = tr_filt["pnl_scaled"].sum()
-    fc2.metric("Realized P&L", _money(realized))
-    nonzero = tr_filt[tr_filt["pnl_scaled"] != 0]
-    wr = (nonzero["pnl_scaled"] > 0).mean() * 100 if len(nonzero) else 0
-    fc3.metric("Win rate (non-zero pnl)", f"{wr:.2f}%")
-    fc4.metric("기간",
-               f"{tr_filt['date'].min().date()} → {tr_filt['date'].max().date()}"
-               if len(tr_filt) else "—")
-
-    # Display — 성능 최적화: page slice 먼저, slice된 ≤100 rows에만 format apply
-    # (이전: tr_filt 전체 5,000+ rows × 4 lambda format → 매 rerun ~20,000 호출, 느림)
-    rows_per_page = 100
-    n_total = len(tr_filt)
-    n_pages = max(1, (n_total + rows_per_page - 1) // rows_per_page)
-    page = st.number_input(
-        f"Page (총 {n_total:,} rows, {n_pages} pages)",
-        min_value=1, max_value=n_pages, value=1, key="champ_trade_page"
-    ) if n_pages > 1 else 1
-    start_idx = (page - 1) * rows_per_page
-    end_idx = start_idx + rows_per_page
-
-    # Slice ≤100 rows BEFORE format apply (큰 성능 차이)
-    disp = tr_filt.iloc[start_idx:end_idx].copy()
-    disp["date"] = disp["date"].dt.strftime("%Y-%m-%d")
-    disp["qty_int"] = disp["qty_int"].apply(lambda x: f"{x:,}")
-    disp["price"] = disp["price"].apply(lambda x: f"${x:.4f}")
-    disp["pnl_scaled"] = disp["pnl_scaled"].apply(lambda x: f"${x:+,.2f}")
-    disp = disp.drop(columns=["pnl", "qty"]).rename(columns={
-        "date": "날짜", "strategy": "Sub-strategy", "leg": "방향",
-        "ticker": "Ticker", "action": "Action", "qty_int": "수량 (정수, 시드 환산)",
-        "price": "체결가", "pnl_scaled": "PnL (시드 환산)", "side": "Side",
-    })
-    st.dataframe(disp, use_container_width=True, hide_index=True, height=400)
-
-    # CSV download — generate only when user clicks (lazy via session_state)
-    # (이전: 매 rerun마다 tr_filt 전체 to_csv encode → 5,000+ rows 매번 직렬화)
-    if st.button(f"💾 CSV 다운로드 준비 ({n_total:,} rows)", key="champ_dl_prep"):
-        st.session_state["champ_csv_ready"] = tr_filt.to_csv(index=False).encode("utf-8-sig")
-    if "champ_csv_ready" in st.session_state:
-        st.download_button(
-            label=f"⬇️ champ_nomargin_trades_{d_from}_{d_to}.csv 받기",
-            data=st.session_state["champ_csv_ready"],
-            file_name=f"champ_nomargin_trades_{d_from}_{d_to}.csv",
-            mime="text/csv", key="champ_dl"
-        )
 
 
 # ───────────────────────────────────────────────────────────
@@ -2119,8 +1754,8 @@ elif page == "🔬 백테 vs 페이퍼":
 
 
 elif page == "📔 매매일지":
-    st.subheader("📔 V1 매매일지 — 일별 레짐·비중·거래 현황")
-    st.caption("V1 백테스트의 일별 레짐 판정, VIX 기반 비중(k_today), 활성 엔진, 거래 내역을 보여줍니다. 데이터는 백테스트 기준.")
+    st.subheader("📔 V1 매매일지 — 일별 레짐·비중 + 전체 거래 로그")
+    st.caption("V1 백테스트의 일별 레짐 판정·VIX 기반 비중(k_today)·활성 엔진·거래를 보여주고, 맨 아래 '전체 거래 로그'에서 시드 환산·필터·CSV 다운로드까지 한 곳에서 처리합니다. 데이터는 백테스트 기준.")
 
     def _mtime_j2(p):
         try: return p.stat().st_mtime
@@ -2155,6 +1790,20 @@ elif page == "📔 매매일지":
             _qs = _d_max - pd.Timedelta(days=_qd) if _qd else _d_min
             st.session_state["j2_dpick_s"] = _qs
             st.session_state["j2_dpick_e"] = _d_max
+
+    # 위기/이벤트 프리셋 (절대 구간 — 특정 사건으로 바로 점프)
+    _qc2 = st.columns(5)
+    _j2_crisis = [
+        ("2020 코로나", "2020-01-02", "2020-06-30"),
+        ("2022 폭락", "2022-01-01", "2022-12-31"),
+        ("2024-08 쇼크", "2024-07-15", "2024-09-15"),
+        ("2025 관세", "2025-03-01", "2025-05-15"),
+        ("16년 전체", None, None),
+    ]
+    for _ci, (_cl, _cs, _ce) in enumerate(_j2_crisis):
+        if _qc2[_ci].button(_cl, use_container_width=True, key=f"j2c_{_cl}"):
+            st.session_state["j2_dpick_s"] = _d_min if _cs is None else max(_d_min, pd.Timestamp(_cs).date())
+            st.session_state["j2_dpick_e"] = _d_max if _ce is None else min(_d_max, pd.Timestamp(_ce).date())
 
     _def_s = st.session_state.get("j2_dpick_s", _d_max - pd.Timedelta(days=30))
     _def_e = st.session_state.get("j2_dpick_e", _d_max)
@@ -2568,6 +2217,102 @@ elif page == "📔 매매일지":
 - **거래** — 당일 매매 이벤트 수 및 사용한 엔진
 - **거래 P&L** — 당일 실현·미실현 손익 합계 (백테스트 기준)
 """)
+
+    # ═══════════════════════════════════════════════════════════
+    # 📒 전체 거래 로그 (구 '거래 내역' 탭 흡수) — 시드 환산·필터·CSV
+    # ═══════════════════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown("### 📒 전체 거래 로그 (선택 기간)")
+    st.caption("위에서 고른 기간의 모든 개별 거래를 한 줄씩. 시작 자본을 넣으면 모든 $ 값이 비례 환산됩니다 (% 수익률은 불변).")
+
+    # ── 시작 자본 ──
+    _sc1, _sc2 = st.columns([1, 3])
+    _user_seed_j = _sc1.number_input(
+        "시작 자본 ($)", min_value=100, max_value=10_000_000,
+        value=10_000, step=1_000, key="j2_user_seed",
+        help="백테는 $100K 시드로 실행. 이 값으로 모든 $ 결과를 비례 스케일링합니다. % 수익률은 변하지 않음."
+    )
+    _sc2.markdown(
+        f"<div style='padding-top:1.7em;color:#888'>💡 모든 $ 값이 <b>${_user_seed_j:,.0f}</b> 시드 기준으로 환산됩니다. % 수익률은 동일.</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── 기간 자산 → 시드 환산 (period-rebase) + BASE 비교 ──
+    _eqp = _eq_j.loc[str(_j2_s):str(_j2_e)]
+    if len(_eqp) >= 2 and {"CHAMP_NOMARGIN", "BASE"}.issubset(_eqp.columns):
+        _champ0 = float(_eqp["CHAMP_NOMARGIN"].iloc[0]); _champ1 = float(_eqp["CHAMP_NOMARGIN"].iloc[-1])
+        _base0 = float(_eqp["BASE"].iloc[0]); _base1 = float(_eqp["BASE"].iloc[-1])
+        _scale_champ = _user_seed_j / _champ0 if _champ0 else _user_seed_j / 100_000.0
+        _champ_final = _champ1 * _scale_champ
+        _base_final = _base1 * (_user_seed_j / _base0) if _base0 else 0.0
+        _sm1, _sm2, _sm3 = st.columns(3)
+        _sm1.metric("V1 최종 자산", f"${_champ_final:,.0f}", f"{(_champ1/_champ0 - 1)*100:+,.2f}%")
+        _sm2.metric("BASE 최종 자산 (동일 기간)", f"${_base_final:,.0f}", f"{(_base1/_base0 - 1)*100:+,.2f}%")
+        _sm3.metric("V1 ÷ BASE", f"×{(_champ_final/_base_final):.2f}" if _base_final else "—", "기간 초과수익 배수")
+    else:
+        _scale_champ = _user_seed_j / 100_000.0
+
+    # ── 거래 로그 필터 ──
+    _strat_map = {"longbyungi": "롱변기", "yangbyungi": "양변기", "goldenbyungi": "황금변기"}
+    _act_map = {"STOP_BUY": "▲ 진입", "LOC_SELL": "▼ LOC청산", "MOO_SELL": "▼ MOO청산", "STOP": "↩ 취소"}
+
+    _tl = _trades_j[(_trades_j["date"] >= pd.Timestamp(_j2_s)) & (_trades_j["date"] <= pd.Timestamp(_j2_e))].copy()
+    _f1, _f2, _f3 = st.columns([2, 1, 1])
+    _strat_opts = sorted(_tl["strategy"].unique())
+    _strat_pick = _f1.multiselect("엔진", options=_strat_opts, default=_strat_opts,
+                                  format_func=lambda s: _strat_map.get(s, s), key="j2_log_strat")
+    _act_opts = sorted(_tl["action"].unique())
+    _act_pick = _f2.multiselect("액션", options=_act_opts, default=_act_opts,
+                                format_func=lambda a: _act_map.get(a, a), key="j2_log_act")
+    _pnl_pick = _f3.radio("손익", options=["전체", "수익만", "손실만"], horizontal=True, key="j2_log_pnl")
+
+    _tl = _tl[_tl["strategy"].isin(_strat_pick) & _tl["action"].isin(_act_pick)]
+    if _pnl_pick == "수익만":
+        _tl = _tl[_tl["pnl"] > 0]
+    elif _pnl_pick == "손실만":
+        _tl = _tl[_tl["pnl"] < 0]
+
+    _tl = _tl.copy()
+    _tl["pnl_s"] = _tl["pnl"] * _scale_champ
+    _tl["qty_s"] = (_tl["qty"] * _scale_champ).round().astype("int64")
+
+    # ── 로그 헤드라인 ──
+    _lm1, _lm2, _lm3, _lm4 = st.columns(4)
+    _lm1.metric("거래 이벤트", f"{len(_tl):,}건")
+    _realized = float(_tl["pnl_s"].sum())
+    _lm2.metric("실현 손익 (시드 환산)", f"${_realized:+,.0f}")
+    _nz = _tl[_tl["pnl_s"] != 0]
+    _wr = (_nz["pnl_s"] > 0).mean() * 100 if len(_nz) else float("nan")
+    _lm3.metric("승률 (손익≠0)", f"{_wr:.1f}%" if not pd.isna(_wr) else "—")
+    _lm4.metric("기간", f"{_tl['date'].min().date()} → {_tl['date'].max().date()}" if len(_tl) else "—")
+
+    # ── 페이지네이션 + 표시 ──
+    _rpp = 100
+    _ntot = len(_tl)
+    _npg = max(1, (_ntot + _rpp - 1) // _rpp)
+    _pg = st.number_input(f"페이지 (총 {_ntot:,}건, {_npg}p)", min_value=1, max_value=_npg,
+                          value=1, key="j2_log_page") if _npg > 1 else 1
+    _s0 = (_pg - 1) * _rpp
+    _disp = _tl.iloc[_s0:_s0 + _rpp].copy()
+    if len(_disp):
+        _disp["날짜"] = _disp["date"].dt.strftime("%Y-%m-%d")
+        _disp["엔진"] = _disp["strategy"].map(lambda s: _strat_map.get(s, s))
+        _disp["액션"] = _disp["action"].map(lambda a: _act_map.get(a, a))
+        _disp["체결가"] = _disp["price"].apply(lambda x: f"${x:.4f}")
+        _disp["수량(환산)"] = _disp["qty_s"].apply(lambda x: f"{x:,}")
+        _disp["손익(환산)"] = _disp["pnl_s"].apply(lambda x: f"${x:+,.2f}")
+        _cols = ["날짜", "엔진", "leg", "ticker", "액션", "수량(환산)", "체결가", "손익(환산)", "side"]
+        _disp = _disp[_cols].rename(columns={"leg": "방향", "ticker": "종목", "side": "Side"})
+        st.dataframe(_disp, use_container_width=True, hide_index=True, height=420)
+    else:
+        st.info("선택한 필터/기간에 해당하는 거래가 없습니다.")
+
+    # ── CSV ──
+    if st.button(f"💾 CSV 준비 ({_ntot:,}건)", key="j2_log_dl_prep"):
+        st.session_state["j2_log_csv"] = _tl.drop(columns=["pnl_s", "qty_s"]).to_csv(index=False).encode("utf-8-sig")
+    if "j2_log_csv" in st.session_state:
+        st.download_button("⬇️ 거래 로그 CSV", data=st.session_state["j2_log_csv"],
+            file_name=f"v1_trades_{_j2_s}_{_j2_e}.csv", mime="text/csv", key="j2_log_dl")
 
 
 # ───────────────────────────────────────────────────────────
