@@ -2169,9 +2169,12 @@ elif page == "📔 매매일지":
         )
 
         # ── SOXL 캔들 + 매매 시점 마커 (전후 거래일 선택 가능) ──
-        _soxl_win = st.select_slider(
-            "🕯 SOXL 캔들 전후 거래일", options=[3, 5, 7, 10, 15], value=5,
+        # value= 대신 session_state 초기화 (value+key 충돌/경고 회피, 드래그 값 안정 반영)
+        st.session_state.setdefault("j2_soxl_win", 5)
+        st.select_slider(
+            "🕯 SOXL 캔들 전후 거래일", options=[3, 5, 7, 10, 15],
             key="j2_soxl_win", help="선택일 기준 앞뒤로 보여줄 거래일 수 (넓힐수록 추세 맥락↑)")
+        _soxl_win = st.session_state["j2_soxl_win"]
         try:
             import yfinance as _yf
             @st.cache_data(ttl=3600)
