@@ -1,10 +1,10 @@
 """
 BUBE V1 CHAMP_NOMARGIN — Streamlit 대시보드
 ===============================================================
-BASE BUBE × VIX dynamic-k overlay (k=0.65 × clip(20/VIX, 0.5, 2.0), alloc≤1.0).
+BASE BUBE × VIX dynamic-k overlay (k=0.60 × clip(20/VIX, 0.5, 2.0), alloc≤1.0).
 margin 사용 X = 합법적 cash sleeve 운영.
 
-16y in-sample (2010-05-25 ~ 2026-05-22):
+16y in-sample (2010-05-25 ~ 2026-06-17, k baseline 0.60 since 2026-06-07):
   Cal 2.75 / CAGR +77.2% / MDD -28.13% / $100K → $926M (×10 vs BASE $90.7M)
 Bootstrap 5,000 paths: p50 Cal 2.16 / MDD -34.9% / P(MDD<-30%) = 82.0%
 
@@ -107,7 +107,7 @@ st.markdown(f"""
     레짐 감지(BULL/BEAR) → 엔진 전환 → <b>VIX 기반 비중 자동 조절</b>&nbsp;(VIX↑ 비중↓ · VIX↓ 비중↑) · Margin 미사용
   </div>
   <div style="opacity:0.75;margin-top:4px;font-size:0.92em">
-    백테스트 16년(2010-05-25 ~ 2026-05-22) · Alpaca 페이퍼 트레이딩 운영 중
+    백테스트 16년({champ_summary['spec']['period']}) · Alpaca 페이퍼 트레이딩 운영 중
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -311,14 +311,14 @@ if page == "📊 백테스트":
 
 # Overlay 수식
 k_today    = base_k × scale_today
-base_k     = 0.65                                    # alloc reduction baseline
+base_k     = 0.60                                    # alloc reduction baseline (2026-06-07 디리스킹 0.65→0.60)
 scale      = clip(20.0 / VIX_today, 0.5, 2.0)        # VIX 역수 스케일
 alloc_today = min(k_today × strategy_alloc, 1.0)     # margin 금지 (cap 1.0)
 
 # 동작 직관
-VIX 10  → scale 2.0 → k=1.30 → alloc cap 1.0  (저변동성 풀로딩)
-VIX 20  → scale 1.0 → k=0.65 → alloc 0.65×strat  (중립)
-VIX 40  → scale 0.5 → k=0.325 → alloc 0.325×strat (고변동성 디리스킹)
+VIX 10  → scale 2.0 → k=1.20 → alloc cap 1.0  (저변동성 풀로딩)
+VIX 20  → scale 1.0 → k=0.60 → alloc 0.60×strat  (중립)
+VIX 40  → scale 0.5 → k=0.30 → alloc 0.30×strat (고변동성 디리스킹)
 VIX 80  → scale 0.5 → 동일 (lo clip)
 
 # BASE BUBE rotation (sub-strategy mapping)
@@ -455,7 +455,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
     _chart_df = pd.DataFrame({
         "날짜": list(_eq_slice.index) * 2,
         "자산": list(_v1_vals) + list(_bs_vals),
-        "전략": ["V1 CHAMP_NOMARGIN"] * len(_v1_vals) + ["BASE k=0.65"] * len(_bs_vals),
+        "전략": ["V1 CHAMP_NOMARGIN"] * len(_v1_vals) + ["BASE k=0.60"] * len(_bs_vals),
     })
     _eq_altair = (
         alt.Chart(_chart_df)
@@ -464,7 +464,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
             x=alt.X("날짜:T", title="날짜"),
             y=alt.Y("자산:Q", title="자산 ($)", axis=alt.Axis(format="$,.0f")),
             color=alt.Color("전략:N", scale=alt.Scale(
-                domain=["V1 CHAMP_NOMARGIN", "BASE k=0.65"],
+                domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"],
                 range=["#3b82f6", "#6b7280"])),
             tooltip=[
                 alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
@@ -475,7 +475,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
         .properties(height=400)
     )
     st.altair_chart(_eq_altair, use_container_width=True)
-    st.caption("V1 CHAMP_NOMARGIN vs 고정비중 BASE(k=0.65). 구간 시작 기준 $10만으로 재조정.")
+    st.caption("V1 CHAMP_NOMARGIN vs 고정비중 BASE(k=0.60). 구간 시작 기준 $10만으로 재조정.")
 
 
 # ───────────────────────────────────────────────────────────
@@ -614,7 +614,7 @@ elif page == "🎲 확률 분포":
 **테스트**: VIX 시리즈를 무작위 셔플 → scale = clip(20/shuffled_VIX, 0.5, 2.0) 적용 → alpha 0으로 수렴.
 **결과**: VIX-conditioning이 진짜 시그널 ✓ (random k variation으로는 alpha 나오지 않음).
 
-이건 단순히 "k=0.65에서 가끔 위아래로 움직인다"가 아니라, **VIX 신호가 시점 정보를 담고 있어서** alpha 발생한다는 것을 입증.
+이건 단순히 "k=0.60에서 가끔 위아래로 움직인다"가 아니라, **VIX 신호가 시점 정보를 담고 있어서** alpha 발생한다는 것을 입증.
 """)
 
 
@@ -781,14 +781,14 @@ elif page == "🔄 기간별 안정성":
         _cal_df = pd.DataFrame({
             "window": list(sw["window"].values) * 2,
             "Calmar": list(sw["BASE_Calmar"].values) + list(sw["CHAMP_Calmar"].values),
-            "전략": ["BASE k=0.65"] * len(sw) + ["V1 CHAMP_NOMARGIN"] * len(sw),
+            "전략": ["BASE k=0.60"] * len(sw) + ["V1 CHAMP_NOMARGIN"] * len(sw),
         })
         st.altair_chart(
             _alt.Chart(_cal_df).mark_bar().encode(
                 x=_alt.X("window:N", title="윈도우", sort=None),
                 y=_alt.Y("Calmar:Q", title="Calmar"),
                 color=_alt.Color("전략:N", scale=_alt.Scale(
-                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.65"], range=["#3b82f6", "#6b7280"])),
+                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"], range=["#3b82f6", "#6b7280"])),
                 xOffset=_alt.XOffset("전략:N"),
                 tooltip=[_alt.Tooltip("window:N", title="윈도우"),
                          _alt.Tooltip("전략:N", title="전략"),
@@ -802,14 +802,14 @@ elif page == "🔄 기간별 안정성":
         _cg_df = pd.DataFrame({
             "window": list(sw["window"].values) * 2,
             "CAGR (%)": list(sw["BASE_CAGR_%"].values) + list(sw["CHAMP_CAGR_%"].values),
-            "전략": ["BASE k=0.65"] * len(sw) + ["V1 CHAMP_NOMARGIN"] * len(sw),
+            "전략": ["BASE k=0.60"] * len(sw) + ["V1 CHAMP_NOMARGIN"] * len(sw),
         })
         st.altair_chart(
             _alt.Chart(_cg_df).mark_bar().encode(
                 x=_alt.X("window:N", title="윈도우", sort=None),
                 y=_alt.Y("CAGR (%):Q", title="CAGR (%)"),
                 color=_alt.Color("전략:N", scale=_alt.Scale(
-                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.65"], range=["#3b82f6", "#6b7280"])),
+                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"], range=["#3b82f6", "#6b7280"])),
                 xOffset=_alt.XOffset("전략:N"),
                 tooltip=[_alt.Tooltip("window:N", title="윈도우"),
                          _alt.Tooltip("전략:N", title="전략"),
@@ -2372,7 +2372,7 @@ elif page == "📔 매매일지":
 - **레짐** 🟢 BULL = 상승장(롱변기) · 🔴 BEAR = 하락장(양변기) · 🟡 NEUTRAL = 중립(롱변기)
 - **활성 엔진** — 롱변기(SOXL 단방향) / 양변기(SOXL+SOXS 페어) / 황금변기(변동성 돌파)
 - **VIX** — 공포지수. 10~15 안정, 20 중립, 30+ 공포
-- **k_today** — 오늘 투자 비중. `0.65 × clip(20/VIX, 0.5, 2.0)`. VIX 20→0.65, VIX 10→1.0(풀로딩), VIX 40→0.33(축소)
+- **k_today** — 오늘 투자 비중. `0.60 × clip(20/VIX, 0.5, 2.0)`. VIX 20→0.60, VIX 10→1.0(풀로딩), VIX 40→0.30(축소)
 - **일간 변동** — V1 포트폴리오 당일 수익률 (백테스트 기준)
 - **거래** — 당일 매매 이벤트 수 및 사용한 엔진
 - **거래 P&L** — 당일 실현·미실현 손익 합계 (백테스트 기준)
@@ -2736,12 +2736,12 @@ elif page == "📖 용어 사전":
     _glossary_card(
         "k_today (비중 승수)",
         "오늘 얼마나 투자할지 결정하는 배수. "
-        "공식: 0.65 × clip(20/VIX, 0.5, 2.0). VIX 20일 때 0.65(중립), VIX 10이면 1.0(풀), VIX 40이면 0.325(축소).",
-        "VIX=15 → k=0.87 → 전략 비중의 87%만 투자"
+        "공식: 0.60 × clip(20/VIX, 0.5, 2.0). VIX 20일 때 0.60(중립), VIX 10이면 1.0(풀), VIX 40이면 0.30(축소).",
+        "VIX=15 → k=0.80 → 전략 비중의 80%만 투자"
     )
     _glossary_card(
         "BASE (비교 기준)",
-        "VIX 동적 조절 없이 고정 비중(k=0.65)으로 운영했을 때의 가상 결과. "
+        "VIX 동적 조절 없이 고정 비중(k=0.60)으로 운영했을 때의 가상 결과. "
         "V1 전략이 얼마나 개선됐는지 비교하는 기준선.",
     )
     _glossary_card(
