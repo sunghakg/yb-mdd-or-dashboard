@@ -2069,11 +2069,15 @@ elif page == "📔 매매일지":
     )
 
     # ── 드릴다운 ──────────────────────────────────────────────
+    # 행 클릭 시 선택 날짜를 session_state에 기억 → 슬라이더 등 다른 위젯이
+    # rerun을 일으켜도(표 선택이 풀려도) 드릴다운이 닫히지 않고 유지됨.
     _sel_rows = _sel_event.selection.rows
     if _sel_rows:
-        _sel_date = _date_order[_sel_rows[0]]
-        _sel_ts = pd.Timestamp(_sel_date)
-        _sel_date_str = _sel_ts.strftime("%Y-%m-%d")
+        st.session_state["j2_sel_date"] = _date_order[_sel_rows[0]].strftime("%Y-%m-%d")
+    _sel_date_str = st.session_state.get("j2_sel_date")
+    if _sel_date_str and pd.Timestamp(_sel_date_str) in _daily_j.index:
+        _sel_ts = pd.Timestamp(_sel_date_str)
+        _sel_date = _sel_ts
 
         st.markdown("---")
         st.markdown(f"### 🔍 {_sel_date_str} 드릴다운 (±15 거래일)")
