@@ -2130,15 +2130,20 @@ elif page == "📔 매매일지":
     # 날짜 선택은 selectbox(표준 위젯=신뢰성)를 주 수단으로. 표 행 클릭은 selectbox 값에
     # 동기화만 함(표 selection은 rerun에 불안정해서 단독으로 쓰지 않음).
     _date_opts = [d.strftime("%Y-%m-%d") for d in _date_order]   # 최신→구
+    # 행 클릭은 '새 클릭'일 때만 selectbox에 반영. (key 있는 표는 _sel_rows가 매 rerun
+    # 유지돼, 무조건 덮으면 selectbox로 날짜 바꿔도 행 날짜로 스냅백됨 → 안 바뀌는 버그)
     _sel_rows = _sel_event.selection.rows
-    if _sel_rows and _sel_rows[0] < len(_date_opts):
-        st.session_state["j2_sel_date_pick"] = _date_opts[_sel_rows[0]]   # 행 클릭 → selectbox 동기화
+    _cur_row = _sel_rows[0] if _sel_rows else None
+    if (_cur_row is not None and _cur_row < len(_date_opts)
+            and _cur_row != st.session_state.get("j2_last_row")):
+        st.session_state["j2_sel_date_pick"] = _date_opts[_cur_row]
+    st.session_state["j2_last_row"] = _cur_row
     if _date_opts and st.session_state.get("j2_sel_date_pick") not in _date_opts:
         st.session_state["j2_sel_date_pick"] = _date_opts[0]              # 기간 변경 시 첫(최신)일로
 
     _sel_date_str = None
     if _date_opts:
-        _sel_date_str = st.selectbox("🔍 드릴다운 날짜 (표 행 클릭으로도 선택됨)",
+        _sel_date_str = st.selectbox("🔍 드릴다운 날짜 (드롭다운에서 직접 선택 · 표 행 클릭으로도 선택됨)",
                                      options=_date_opts, key="j2_sel_date_pick")
 
     if _sel_date_str and pd.Timestamp(_sel_date_str) in _daily_j.index:
@@ -2432,8 +2437,9 @@ elif page == "📔 매매일지":
                         })
 
                 _sel_close_txt = f" · 선택일 종가 **${_sel_close:,.2f}**" if _sel_close is not None else ""
-                st.markdown(f"**🕯 SOXL 선택일 전후 {_soxl_win}거래일 캔들**{_sel_close_txt}")
-                st.caption("위=캔들(양봉🟢/음봉🔴) — 컬럼 근처만 가도 OHLC·일중변동 툴팁 표시 · 아래 스트립 = 🟢▲ 진입(시가 대비 +돌파%) · 🔴▼ 청산(실현 수익률). 같은 날도 레인 분리. 전후 일수는 위 슬라이더로 조절")
+                _yr_rng = f"{_soxl_df['날짜_str'].iloc[0]} ~ {_soxl_df['날짜_str'].iloc[-1]}"
+                st.markdown(f"**🕯 SOXL 캔들 · {_yr_rng}** (전후 {_soxl_win}거래일){_sel_close_txt}")
+                st.caption("x축은 월/일 표기, 정확한 연·월·일은 위 범위·호버 툴팁에서 확인 · 양봉🟢/음봉🔴 — 컬럼 근처만 가도 OHLC·일중변동 툴팁 · 아래 스트립 = 🟢▲ 진입(시가 대비 +돌파%) · 🔴▼ 청산(실현 수익률). 전후 일수는 위 슬라이더로 조절")
 
                 if _strip_rows:
                     _strip_df = pd.DataFrame(_strip_rows)
