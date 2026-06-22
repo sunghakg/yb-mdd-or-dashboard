@@ -1193,8 +1193,8 @@ elif page == "💰 실시간 현황":
             else:
                 _typ, _pnl = "🔴 매도", "—"
                 _cont = f"{_t['sym']} {_t['qty']:,.0f}주 @ ${_t['px']:,.2f}"
-            _tl_rows.append({"_d": _t["date"], "날짜": _t["date"], "유형": _typ,
-                             "내용": _cont, "손익": _pnl, "누적": f"${_t['cum']:+,.0f}"})
+            _tl_rows.append({"_d": _t["date"], "날짜": _t["date"], "유형": _typ, "내용": _cont,
+                             "손익": _pnl, "누적": f"${_t['cum']:+,.0f} ({_t['cum'] / seed * 100:+.2f}%)"})
 
         if _tl_rows:
             _tl_df = (pd.DataFrame(_tl_rows).sort_values("_d", ascending=False)
@@ -1226,7 +1226,7 @@ elif page == "💰 실시간 현황":
             )
             _n_fix = sum(1 for _r in _tl_rows if _r["유형"] == "🔧 수정")
             _tot_real = sum(t["realized"] for t in _disp_trades if t["realized"] is not None)
-            st.caption(f"최근 30일: 체결 **{len(_disp_trades)}건** · 매도 누적 실현손익 **${_tot_real:+,.0f}** · 운영 수정 **{_n_fix}건**(🔧 황색). 매도행 = 평단 대비 수익률%.")
+            st.caption(f"최근 30일: 체결 **{len(_disp_trades)}건** · 매도 누적 실현손익 **${_tot_real:+,.0f} ({_tot_real / seed * 100:+.2f}%)** (시드 $100K 대비) · 운영 수정 **{_n_fix}건**(🔧 황색). 매도행 = 평단 대비 수익률%.")
         else:
             st.info("최근 30일 체결 내역 없음 — 레짐이 현금 유지 중이었거나 진입 조건 미충족.")
 
