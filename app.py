@@ -1497,14 +1497,34 @@ elif page == "🔬 백테 vs 페이퍼":
             _eq_bt_all = _load_eq_cmp(_mtime_cmp(CHAMP / "equity_curves.csv"))
             _daily_bt_all = _load_daily_cmp(_mtime_cmp(CHAMP / "daily.csv"))
 
-            # ── Period overlap ──
+            # ── Period overlap (겹치는 구간만 비교 — '가능한 날부터') ──
             _p_start = _paper_df.index[0]
             _p_end = _paper_df.index[-1]
+            _bt_start = _eq_bt_all.index.min()
+            _bt_end = _eq_bt_all.index.max()
 
-            _bt_eq = _eq_bt_all.loc[_p_start:_p_end, "CHAMP_NOMARGIN"].dropna()
+            # 두 데이터셋의 교집합 구간
+            _ov_start = max(_p_start, _bt_start)
+            _ov_end = min(_p_end, _bt_end)
+
+            _bt_eq = _eq_bt_all.loc[_ov_start:_ov_end, "CHAMP_NOMARGIN"].dropna() if _ov_start <= _ov_end else pd.Series(dtype=float)
             if len(_bt_eq) < 2:
-                st.error(f"백테 데이터에 {_p_start.strftime('%Y-%m-%d')}부터의 데이터가 없습니다.")
+                st.warning(
+                    f"⚠️ **비교 가능한 겹침 구간이 없습니다.**\n\n"
+                    f"- 백테 데이터: `{_bt_start.date()}` ~ **`{_bt_end.date()}`**\n"
+                    f"- 페이퍼 데이터: `{_p_start.date()}` ~ `{_p_end.date()}`\n\n"
+                    f"백테 자산곡선이 페이퍼 시작일(`{_p_start.date()}`)보다 이르게 끝났습니다. "
+                    f"백테 자동 갱신이 밀린 것으로 보입니다 — `run_daily.py --include-v1`로 최신화하면 복구됩니다."
+                )
                 st.stop()
+
+            # 겹침이 페이퍼 전체를 못 덮으면 안내 (가능한 구간만 비교 중)
+            if _ov_start > _p_start or _ov_end < _p_end:
+                st.info(
+                    f"ℹ️ **겹치는 구간만 비교합니다:** `{_bt_eq.index[0].date()}` ~ `{_bt_eq.index[-1].date()}` "
+                    f"(백테는 `{_bt_end.date()}`까지, 페이퍼는 `{_p_start.date()}`~`{_p_end.date()}`). "
+                    f"백테가 최신화되면 자동으로 페이퍼 끝까지 비교됩니다."
+                )
 
             # Reindex paper to backtest trading days
             _pa_eq = _paper_df["equity"].reindex(_bt_eq.index).ffill()
@@ -1522,7 +1542,7 @@ elif page == "🔬 백테 vs 페이퍼":
             _days = len(_bt_eq)
             _mo = _days // 21
             st.caption(
-                f"기준일: {_p_start.strftime('%Y-%m-%d')} → {_p_end.strftime('%Y-%m-%d')} "
+                f"비교 구간: {_bt_eq.index[0].strftime('%Y-%m-%d')} → {_bt_eq.index[-1].strftime('%Y-%m-%d')} "
                 f"({_days}거래일 ≈ {_mo}개월) · 시작 자산: ${_pa_seed:,.0f}"
             )
 
