@@ -2073,6 +2073,10 @@ elif page == "📔 매매일지":
                         else f"포지션 {_inv*100:.0f}% 보유 — 신규 진입/청산 신호 없음")
         return "신호 없음" if brief else "당일 진입/청산 신호 없음"
 
+    # 기간 시작 대비 누적 수익률 (선택 기간 첫날=0%)
+    _eq_nonan = _eq_rec.dropna()
+    _eq_first = float(_eq_nonan.iloc[0]) if len(_eq_nonan) else None
+
     _rows = []
     for _date, _drow in _daily_rec.iloc[::-1].iterrows():
         _rg = _drow["regime"] if _has_rg else "—"
@@ -2081,6 +2085,8 @@ elif page == "📔 매매일지":
         _k = float(_drow["k_today"]) if _has_k else float("nan")
         _date_norm = _date.normalize() if hasattr(_date, "normalize") else _date
         _dr = float(_eq_daily_ret.get(_date, float("nan")))
+        _eqv = _eq_rec.get(_date, float("nan"))
+        _cumret = (float(_eqv) / _eq_first - 1) * 100 if (_eq_first and pd.notna(_eqv)) else float("nan")
 
         if _date_norm in _by_date.index:
             _tr = _by_date.loc[_date_norm]
@@ -2106,6 +2112,7 @@ elif page == "📔 매매일지":
             "VIX": f"{_vix:.2f}" if not pd.isna(_vix) else "—",
             "k_today (비중)": f"{_k:.3f}" if not pd.isna(_k) else "—",
             "일간 변동": f"{_dr:+.2f}%" if not pd.isna(_dr) else "—",
+            "누적 수익률": f"{_cumret:+.2f}%" if not pd.isna(_cumret) else "—",
             "거래": _trade_str,
             "거래 P&L": _pnl_str,
         })
@@ -2113,17 +2120,18 @@ elif page == "📔 매매일지":
     _view_df = pd.DataFrame(_rows)
     _date_order = list(_daily_rec.iloc[::-1].index)  # 테이블 행 순서와 동일 (최신→구)
 
-    st.caption("💡 행을 클릭하면 해당 날짜 전후 ±15 거래일 차트를 볼 수 있습니다.")
+    st.caption("💡 행을 클릭하면 해당 날짜 전후 캔들 차트를 볼 수 있습니다. 다른 행을 클릭하면 그 날짜로 바뀝니다.")
+    # ★key 필수: 없으면 첫 선택 후 다른 행 클릭이 안정적으로 안 먹어 캔들이 안 바뀜
     _sel_event = st.dataframe(
         _view_df, use_container_width=True, hide_index=True, height=520,
-        on_select="rerun", selection_mode="single-row"
+        on_select="rerun", selection_mode="single-row", key="j2_journal_table"
     )
 
     # ── 드릴다운 ──────────────────────────────────────────────
-    # 행 클릭 시 선택 날짜를 session_state에 기억 → 슬라이더 등 다른 위젯이
-    # rerun을 일으켜도(표 선택이 풀려도) 드릴다운이 닫히지 않고 유지됨.
+    # key 덕에 _sel_rows가 클릭마다 갱신·rerun에도 유지됨. 선택 날짜를 session_state에도
+    # 기억(기간 변경에도 견고 + 슬라이더 등 rerun에 드릴다운 유지).
     _sel_rows = _sel_event.selection.rows
-    if _sel_rows:
+    if _sel_rows and _sel_rows[0] < len(_date_order):
         st.session_state["j2_sel_date"] = _date_order[_sel_rows[0]].strftime("%Y-%m-%d")
     _sel_date_str = st.session_state.get("j2_sel_date")
     if _sel_date_str and pd.Timestamp(_sel_date_str) in _daily_j.index:
