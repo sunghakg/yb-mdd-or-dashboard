@@ -8,42 +8,42 @@
       "hi": 2.0
     },
     "alloc_cap": 1.0,
-    "period": "2010-05-25 ~ 2026-06-17"
+    "period": "2010-05-25 ~ 2026-06-22"
   },
   "headline_16y_CHAMP": {
-    "CAGR": 59.73724131085767,
+    "CAGR": 60.33671521531716,
     "MDD": -26.332390584908726,
-    "Sharpe": 1.6861797409538664,
-    "Calmar": 2.2685840511986592,
-    "Final_mult": 1848.2068863833879
+    "Sharpe": 1.6905978066486915,
+    "Calmar": 2.29134969803678,
+    "Final_mult": 1967.8867696123953
   },
   "headline_16y_BASE": {
-    "CAGR": 49.670358142459634,
+    "CAGR": 50.15182006050374,
     "MDD": -25.03538445292135,
-    "Sharpe": 1.5803830783923298,
-    "Calmar": 1.9840062067296778,
-    "Final_mult": 649.7131711245011
+    "Sharpe": 1.585828682132137,
+    "Calmar": 2.0032374639508115,
+    "Final_mult": 685.6289711099952
   },
   "bootstrap_CHAMP": {
-    "cagr_p05": 41.00237053537358,
-    "cagr_p50": 57.946359926708965,
-    "cagr_p95": 77.79704970953367,
-    "mdd_p05": -43.410378260395206,
-    "mdd_p50": -31.323004746689314,
-    "mdd_p95": -24.058313842315084,
-    "cal_p05": 1.0604567043305344,
-    "cal_p50": 1.8453320380817704,
-    "cal_p95": 2.9314406179671675,
-    "p_mdd_worse_than_30": 59.31999999999999,
-    "p_mdd_worse_than_40": 10.040000000000001,
+    "cagr_p05": 40.83922751135238,
+    "cagr_p50": 58.51682088934134,
+    "cagr_p95": 78.33848192908725,
+    "mdd_p05": -43.19412966119177,
+    "mdd_p50": -31.38659348145174,
+    "mdd_p95": -23.992478202464977,
+    "cal_p05": 1.0672043127869377,
+    "cal_p50": 1.8509716067803519,
+    "cal_p95": 2.990898294090157,
+    "p_mdd_worse_than_30": 59.78,
+    "p_mdd_worse_than_40": 10.280000000000001,
     "p_cagr_positive": 100.0,
     "p_cagr_above_30": 99.74
   },
-  "trades_count": 5398,
+  "trades_count": 5401,
   "files": {
-    "xlsx": "C:\\Users\\sungh\\yb-mdd-or-trader\\backtest\\bube_champ_nomargin_16yr\\bube_champ_nomargin_16yr.xlsx",
-    "equity_csv": "C:\\Users\\sungh\\yb-mdd-or-trader\\backtest\\bube_champ_nomargin_16yr\\equity_curves.csv",
-    "daily_csv": "C:\\Users\\sungh\\yb-mdd-or-trader\\backtest\\bube_champ_nomargin_16yr\\daily.csv",
-    "trades_csv": "C:\\Users\\sungh\\yb-mdd-or-trader\\backtest\\bube_champ_nomargin_16yr\\trades_champ.csv"
+    "xlsx": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/bube_champ_nomargin_16yr.xlsx",
+    "equity_csv": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/equity_curves.csv",
+    "daily_csv": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/daily.csv",
+    "trades_csv": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/trades_champ.csv"
   }
 }
