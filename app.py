@@ -405,7 +405,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
         except Exception: return 0
 
     @st.cache_data
-    def _load_eq_bt(_k):
+    def _load_eq_bt(k):
         return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
 
     _eq_bt = _load_eq_bt(_mtime_bt(CHAMP / "equity_curves.csv"))
@@ -1313,7 +1313,7 @@ def _render_v2_tab():
             except Exception: return 0
 
         @st.cache_data
-        def _load_v2_equity(_mtime_key):
+        def _load_v2_equity(mtime_key):
             return pd.read_csv(V2DIR / "equity_paths.csv", parse_dates=["date"], index_col="date")
         eq_v2 = _load_v2_equity(_mtime_t8(V2DIR / "equity_paths.csv"))
         eq_seed_col1, eq_seed_col2 = st.columns([1, 3])
@@ -1367,7 +1367,7 @@ def _render_v2_tab():
         # ── D. Yearly breakdown V1 vs V2 ──
         st.markdown("### 📅 Year-by-Year — V1 vs V2_FINAL")
         @st.cache_data
-        def _load_v2_yearly(_mtime_key):
+        def _load_v2_yearly(mtime_key):
             return pd.read_csv(V2DIR / "yearly_breakdown.csv")
         yb = _load_v2_yearly(_mtime_t8(V2DIR / "yearly_breakdown.csv"))
 
@@ -1622,15 +1622,15 @@ elif page == "🔬 백테 vs 페이퍼":
                 except Exception: return 0
 
             @st.cache_data
-            def _load_eq_cmp(_k):
+            def _load_eq_cmp(k):
                 return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
 
             @st.cache_data
-            def _load_daily_cmp(_k):
+            def _load_daily_cmp(k):
                 return pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
 
             @st.cache_data
-            def _load_trades_cmp(_k):
+            def _load_trades_cmp(k):
                 t = pd.read_csv(CHAMP / "trades_champ.csv")
                 t["date"] = pd.to_datetime(t["date"])
                 return t
@@ -1923,15 +1923,15 @@ elif page == "📔 매매일지":
         except Exception: return 0
 
     @st.cache_data
-    def _load_daily_j2(_k):
+    def _load_daily_j2(k):
         return pd.read_csv(CHAMP / "daily.csv", parse_dates=["date"], index_col="date")
 
     @st.cache_data
-    def _load_eq_j2(_k):
+    def _load_eq_j2(k):
         return pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
 
     @st.cache_data
-    def _load_trades_j2(_k):
+    def _load_trades_j2(k):
         t = pd.read_csv(CHAMP / "trades_champ.csv")
         t["date"] = pd.to_datetime(t["date"])
         return t
