@@ -1045,8 +1045,8 @@ elif page == "💰 실시간 현황":
             orders = tc.get_orders(filter=GetOrdersRequest(
                 status=QueryOrderStatus.ALL, after=today_utc, limit=50
             ))
-            # 최근 30일 전체 주문 (체결/취소 포함) — 매매 타임라인용
-            _month_ago = today_utc - _dt.timedelta(days=30)
+            # 최근 60일 주문 — 평단(평균단가) 회계용으로 넉넉히, 표시는 30일만
+            _month_ago = today_utc - _dt.timedelta(days=60)
             orders_30d = tc.get_orders(filter=GetOrdersRequest(
                 status=QueryOrderStatus.CLOSED, after=_month_ago, limit=500
             ))
@@ -1133,8 +1133,8 @@ elif page == "💰 실시간 현황":
         # ── 최근 30일 매매·수정 타임라인 ──────────────────────────
         st.markdown("---")
         st.markdown("### 📋 최근 30일 매매 · 운영 수정 타임라인")
-        st.caption("최근 30일 체결(✅)에 우리가 운영 중 적용한 수정(🔧)을 시간순으로 끼워 표시 — "
-                   "수정 시점 전후로 봇 매매가 어떻게 달라졌는지, 백테 정합이 개선됐는지 눈으로 확인용.")
+        st.caption("최근 30일 체결을 시간순으로 — 🟢매수 / 🔴매도(평단 대비 실현 수익률%·손익$) · 날짜별 **누적 실현손익** · "
+                   "우리가 적용한 운영 수정(🔧)도 끼워 표시. 평단은 60일 주문 이력으로 평균단가 회계.")
 
         import datetime as _dtt
         # 운영 수정 이력 (라이브 봇/백테에 실제 적용한 변경)
@@ -1147,35 +1147,86 @@ elif page == "💰 실시간 현황":
         ]
         _cutoff = (_dtt.date.today() - _dtt.timedelta(days=31)).isoformat()
 
+        # 1) 체결 주문 시간순 → 평균단가 회계 (봇은 SOXL·SOXS 모두 롱: buy=개시, sell=청산)
+        _fills = [o for o in data.get("orders_30d", [])
+                  if o.get("status") == "filled" and o.get("fill_avg") and o.get("filled_at")]
+        _fills.sort(key=lambda o: o["filled_at"])
+        _book, _trades = {}, []
+        for _o in _fills:
+            _sym = _o["symbol"]; _q = float(_o["qty"]); _px = float(_o["fill_avg"]); _side = _o["side"]
+            _p = _book.setdefault(_sym, {"q": 0.0, "cost": 0.0})
+            _avg = _realized = _ret = None
+            if _side == "buy":
+                _p["q"] += _q; _p["cost"] += _q * _px
+            elif _p["q"] > 1e-9:                       # 청산 (보유분 한도 내)
+                _avg = _p["cost"] / _p["q"]
+                _sq = min(_q, _p["q"])
+                _realized = _sq * (_px - _avg)
+                _ret = (_px / _avg - 1) * 100
+                _p["cost"] -= _avg * _sq; _p["q"] -= _sq
+            _trades.append({"date": _o["filled_at"][:10], "side": _side, "sym": _sym,
+                            "qty": _q, "px": _px, "avg": _avg, "realized": _realized, "ret": _ret})
+
+        # 2) 30일 표시분에 누적 실현손익(시간순)
+        _disp_trades = [t for t in _trades if t["date"] >= _cutoff]
+        _cum = 0.0
+        for _t in _disp_trades:
+            if _t["realized"] is not None:
+                _cum += _t["realized"]
+            _t["cum"] = _cum
+
+        # 3) 타임라인 행 — 5컬럼(날짜·유형·내용·손익·누적), 내용에 합쳐 가독성↑
         _tl_rows = []
         for _fd, _ft, _fdesc in _fix_events:
             if _fd < _cutoff:
                 continue
-            _tl_rows.append({"_d": _fd, "날짜": _fd, "구분": "🔧 수정", "종목": "—", "방향": "—",
-                             "수량": "—", "체결가": "—", "내용": f"{_ft} — {_fdesc}"})
-        for _o in data.get("orders_30d", []):
-            if _o.get("status") != "filled" or not _o.get("fill_avg"):
-                continue
-            _dd = (_o.get("filled_at") or "")[:10]
-            _side_k = "🟢 매수" if _o.get("side") == "buy" else "🔴 매도"
-            _tl_rows.append({"_d": _dd, "날짜": _dd, "구분": "✅ 체결", "종목": _o.get("symbol", "—"),
-                             "방향": _side_k, "수량": f"{_o.get('qty', 0):,.0f}",
-                             "체결가": f"${_o.get('fill_avg', 0):.2f}", "내용": "—"})
+            _tl_rows.append({"_d": _fd, "날짜": _fd, "유형": "🔧 수정",
+                             "내용": f"{_ft} — {_fdesc}", "손익": "—", "누적": "—"})
+        for _t in _disp_trades:
+            if _t["side"] == "buy":
+                _typ, _pnl = "🟢 매수", "진입"
+                _cont = f"{_t['sym']} {_t['qty']:,.0f}주 @ ${_t['px']:,.2f}"
+            elif _t["avg"] is not None:
+                _typ = "🔴 매도"
+                _cont = f"{_t['sym']} {_t['qty']:,.0f}주 · 평단 ${_t['avg']:,.2f} → 체결 ${_t['px']:,.2f}"
+                _pnl = f"${_t['realized']:+,.0f} ({_t['ret']:+.2f}%)"
+            else:
+                _typ, _pnl = "🔴 매도", "—"
+                _cont = f"{_t['sym']} {_t['qty']:,.0f}주 @ ${_t['px']:,.2f}"
+            _tl_rows.append({"_d": _t["date"], "날짜": _t["date"], "유형": _typ,
+                             "내용": _cont, "손익": _pnl, "누적": f"${_t['cum']:+,.0f}"})
 
         if _tl_rows:
             _tl_df = (pd.DataFrame(_tl_rows).sort_values("_d", ascending=False)
                       .drop(columns="_d").reset_index(drop=True))
 
-            def _hl_fix(_row):
-                _is_fix = _row["구분"] == "🔧 수정"
-                return ["background-color:#3a2e12;color:#fde68a;font-weight:600" if _is_fix else "" for _ in _row]
+            def _hl_row(_row):
+                if _row["유형"] == "🔧 수정":
+                    return ["background-color:#3a2e12;color:#fde68a;font-weight:600"] * len(_row)
+                return [""] * len(_row)
 
-            _tl_sty = _tl_df.style.apply(_hl_fix, axis=1)
-            st.dataframe(_tl_sty, use_container_width=True, hide_index=True,
-                         height=min((len(_tl_df) + 1) * 35 + 3, 640))
-            _n_fills = sum(1 for _r in _tl_rows if _r["구분"] == "✅ 체결")
-            _n_fix = sum(1 for _r in _tl_rows if _r["구분"] == "🔧 수정")
-            st.caption(f"최근 30일: 체결 **{_n_fills}건** + 운영 수정 **{_n_fix}건** · 🔧 황색 행 = 수정 시점 (신규순).")
+            def _clr_pnl(v):
+                if isinstance(v, str) and v not in ("—", "진입"):
+                    if "+" in v:
+                        return "color:#4ade80"
+                    if "-" in v or "−" in v:
+                        return "color:#f87171"
+                return ""
+
+            _tl_sty = (_tl_df.style.apply(_hl_row, axis=1)
+                       .map(_clr_pnl, subset=["손익", "누적"]))
+            st.dataframe(
+                _tl_sty, use_container_width=True, hide_index=True,
+                height=min((len(_tl_df) + 1) * 35 + 3, 680),
+                column_config={
+                    "날짜": st.column_config.TextColumn(width="small"),
+                    "유형": st.column_config.TextColumn(width="small"),
+                    "내용": st.column_config.TextColumn(width="large"),
+                },
+            )
+            _n_fix = sum(1 for _r in _tl_rows if _r["유형"] == "🔧 수정")
+            _tot_real = sum(t["realized"] for t in _disp_trades if t["realized"] is not None)
+            st.caption(f"최근 30일: 체결 **{len(_disp_trades)}건** · 매도 누적 실현손익 **${_tot_real:+,.0f}** · 운영 수정 **{_n_fix}건**(🔧 황색). 매도행 = 평단 대비 수익률%.")
         else:
             st.info("최근 30일 체결 내역 없음 — 레짐이 현금 유지 중이었거나 진입 조건 미충족.")
 
