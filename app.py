@@ -622,8 +622,15 @@ elif page == "🎲 확률 분포":
 # TAB 5: Year-by-Year
 # ───────────────────────────────────────────────────────────
 elif page == "📅 연도별 성과":
-    st.subheader("📅 연도별 성과 — 17년 V1 vs BASE")
-    st.caption("V1이 매년 일관되게 BASE보다 우월하면 전략이 특정 기간 운으로 만들어진 게 아님을 증명. 수익률·낙폭·샤프 비교.")
+    st.subheader("📅 연도별 성과 — 17년 🏆 CHAMP(우리 매매법) vs BASE")
+    st.markdown(
+        "<div style='background:#0f172a;border-left:4px solid #3b82f6;padding:10px 16px;border-radius:8px;"
+        "margin-bottom:12px;color:#cbd5e1;line-height:1.6'>"
+        "<b style='color:#60a5fa'>🏆 CHAMP_NOMARGIN = 우리가 실제로 운영하는 V1 매매법</b> "
+        "(VIX 동적 비중). 아래 <b style='color:#93c5fd'>파란 칸</b>이 우리 성과이고, BASE(고정 비중)는 비교 기준선입니다. "
+        "<b>🏆 표시 연도 = CHAMP가 BASE를 이긴 해</b>.</div>",
+        unsafe_allow_html=True,
+    )
 
     yp = CHAMP / "yearly.csv"
     if yp.exists():
@@ -635,31 +642,45 @@ elif page == "📅 연도별 성과":
         if SHOW_V2 and v2_yp.exists():
             v2_yearly = pd.read_csv(v2_yp).set_index("year")
 
-        # Build display
+        # Build display — CHAMP(우리 매매법) 우선 배치, BASE는 비교 기준
         rows = []
         for _, r in y.iterrows():
             yr_int = int(r["year"])
-            v2_ret = v2_yearly.loc[yr_int, "V2_FINAL_ret"] if (v2_yearly is not None and yr_int in v2_yearly.index) else None
-            v2_mdd = v2_yearly.loc[yr_int, "V2_FINAL_mdd"] if (v2_yearly is not None and yr_int in v2_yearly.index) else None
-            rows.append({
-                "Year": yr_int,
-                "BASE Ret": f"{r['BASE_ret_%']:+.2f}%",
-                "CHAMP Ret": f"{r['CHAMP_ret_%']:+.2f}%",
-                "V2 Ret": f"{v2_ret:+.2f}%" if v2_ret is not None and not pd.isna(v2_ret) else "—",
-                "Δ Ret (CHAMP-BASE)": f"{r['Δ_ret_pp']:+.2f}pp",
-                "BASE MDD": f"{r['BASE_mdd_%']:+.2f}%",
+            _win = "🏆" if r["Δ_ret_pp"] > 1e-9 else ("=" if abs(r["Δ_ret_pp"]) <= 1e-9 else "·")
+            row = {
+                "연도": yr_int,
+                "🏆": _win,
+                "CHAMP 수익": f"{r['CHAMP_ret_%']:+.2f}%",
                 "CHAMP MDD": f"{r['CHAMP_mdd_%']:+.2f}%",
-                "V2 MDD": f"{v2_mdd:+.2f}%" if v2_mdd is not None and not pd.isna(v2_mdd) else "—",
-                "Δ MDD (CHAMP-BASE)": f"{r['Δ_mdd_pp']:+.2f}pp",
                 "CHAMP Sharpe": f"{r['CHAMP_sharpe']:.2f}",
-                "CHAMP End $": _money(r["CHAMP_end_$"]),
-            })
+                "CHAMP 연말자본": _money(r["CHAMP_end_$"]),
+                "BASE 수익": f"{r['BASE_ret_%']:+.2f}%",
+                "BASE MDD": f"{r['BASE_mdd_%']:+.2f}%",
+                "Δ수익 (우위)": f"{r['Δ_ret_pp']:+.2f}pp",
+                "Δ MDD (우위)": f"{r['Δ_mdd_pp']:+.2f}pp",
+            }
+            if v2_yearly is not None and yr_int in v2_yearly.index:
+                row["V2 수익"] = f"{v2_yearly.loc[yr_int, 'V2_FINAL_ret']:+.2f}%"
+            rows.append(row)
         df_year = pd.DataFrame(rows)
-        if not SHOW_V2:
-            df_year = df_year.drop(columns=["V2 Ret", "V2 MDD"], errors="ignore")
-        st.dataframe(df_year, use_container_width=True, hide_index=True)
-        if v2_yearly is not None:
-            st.caption("ℹ️ V2 Ret/MDD 컬럼은 data/v2_final/yearly_breakdown.csv (daily 자동 갱신).")
+
+        _champ_cols = ["CHAMP 수익", "CHAMP MDD", "CHAMP Sharpe", "CHAMP 연말자본"]
+        _delta_cols = ["Δ수익 (우위)", "Δ MDD (우위)"]
+
+        def _delta_clr(v):
+            if isinstance(v, str) and v.startswith("+"): return "color:#4ade80;font-weight:600"
+            if isinstance(v, str) and v.startswith("-"): return "color:#f87171"
+            return ""
+
+        _sty = (
+            df_year.style
+            .set_properties(subset=_champ_cols, **{"background-color": "#15294a", "color": "#dbeafe", "font-weight": "700"})
+            .set_properties(subset=["🏆"], **{"text-align": "center", "font-size": "1.1em"})
+            .map(_delta_clr, subset=_delta_cols)
+        )
+        st.dataframe(_sty, use_container_width=True, hide_index=True, height=(len(df_year) + 1) * 35 + 3)
+        st.caption("💙 파란 칸 = CHAMP(우리 매매법) · 🏆 = 그 해 CHAMP가 BASE 수익률 초과 · Δ 초록 = CHAMP 우위."
+                   + (" · V2는 연구용(미운영)." if v2_yearly is not None else ""))
 
         # Summary
         wins_ret = (y["Δ_ret_pp"] > 0).sum()
@@ -679,19 +700,23 @@ elif page == "📅 연도별 성과":
                    f"{avg_ret:+.2f}pp / {avg_mdd:+.2f}pp")
 
         # Yearly equity chart
-        st.markdown("### 📈 연말 자본 ($100K 시드 기준)")
+        st.markdown("### 📈 연말 자본 ($100K 시드 기준) — 🏆 CHAMP 강조")
         import altair as _alt
+        _CHAMP_LBL = "🏆 CHAMP (우리 매매법)"; _BASE_LBL = "BASE (고정 0.60)"
         _cy_df = pd.DataFrame({
             "연도": list(y["year"].astype(int).values) * 2,
-            "자산": list(y["BASE_end_$"].values) + list(y["CHAMP_end_$"].values),
-            "전략": ["BASE k=0.65"] * len(y) + ["V1 CHAMP_NOMARGIN"] * len(y),
+            "자산": list(y["CHAMP_end_$"].values) + list(y["BASE_end_$"].values),
+            "전략": [_CHAMP_LBL] * len(y) + [_BASE_LBL] * len(y),
         })
         st.altair_chart(
-            _alt.Chart(_cy_df).mark_line(point=True, strokeWidth=2).encode(
+            _alt.Chart(_cy_df).mark_line(point=True).encode(
                 x=_alt.X("연도:O", title="연도"),
                 y=_alt.Y("자산:Q", title="자산 ($)", axis=_alt.Axis(format="$,.0f")),
                 color=_alt.Color("전략:N", scale=_alt.Scale(
-                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.65"], range=["#3b82f6", "#6b7280"])),
+                    domain=[_CHAMP_LBL, _BASE_LBL], range=["#3b82f6", "#9ca3af"]),
+                    legend=_alt.Legend(title=None, orient="top")),
+                strokeWidth=_alt.StrokeWidth("전략:N", scale=_alt.Scale(
+                    domain=[_CHAMP_LBL, _BASE_LBL], range=[3.5, 1.5]), legend=None),
                 tooltip=[_alt.Tooltip("연도:O", title="연도"),
                          _alt.Tooltip("전략:N", title="전략"),
                          _alt.Tooltip("자산:Q", title="자산", format="$,.0f")],
@@ -819,7 +844,7 @@ elif page == "💰 실시간 현황":
 <div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
   <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">🏆 V1 CHAMP_NOMARGIN Overlay (운영 중)</div>
   <div style="opacity:0.92;line-height:1.7">
-    <b>k_today</b> = 0.65 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0)<br>
+    <b>k_today</b> = 0.60 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0) &nbsp;<span style="opacity:0.7">(baseline 0.60 — 2026-06-07 디리스킹)</span><br>
     BASE: <b>BULL/NEUTRAL</b> 롱변기 · <b>BEAR</b> 양변기 v5 · <b>BEAR streak &gt; 90d</b> 황금변기<br>
     <b>갭필터 A안(비대칭, 2026-06-03)</b>: 롱변기·양변기롱 갭다운만 차단 · 양변기숏 대칭<br>
     <b>Regime</b>: Consensus 3-SMA200 (QQQ/SPY/SMH ±2%, 2-of-3) + Fast BEAR OR (VIX9D/VIX&gt;1.05 OR SOXL 5d mom&lt;-10%), dwell=5d
@@ -938,7 +963,7 @@ elif page == "💰 실시간 현황":
             try:
                 vix_today = float(vix["Close"].iloc[-1])
                 scale = max(0.5, min(2.0, 20.0 / vix_today))
-                k_today = 0.65 * scale
+                k_today = 0.60 * scale   # CHAMP_BASE_K=0.60 (2026-06-07 디리스킹, 봇과 동기)
                 # alloc cap 1.0 (no margin)
                 # For display: assume strat alloc = 1.0 then alloc_today = min(k_today, 1.0)
                 alloc_max = min(k_today, 1.0)
@@ -988,8 +1013,8 @@ elif page == "💰 실시간 현황":
             v2.metric("비중 스케일", f"{rstate['scale']:.3f}",
                       help="clip(20/VIX, 0.5, 2.0). VIX=10이면 2.0, VIX=20이면 1.0, VIX=40이면 0.5.")
             v3.metric("k_today (비중 승수)", f"{rstate['k_today']:.3f}",
-                      f"기준 0.65 대비 {rstate['k_today']/0.65:.1f}×",
-                      help="0.65 × 스케일. 이 값이 전략 원래 비중에 곱해짐.")
+                      f"기준 0.60 대비 {rstate['k_today']/0.60:.1f}×",
+                      help="0.60 × 스케일 (baseline 0.60, 2026-06-07 디리스킹). 이 값이 전략 원래 비중에 곱해짐.")
             v4.metric("최대 투자 비중", f"{rstate['alloc_max']*100:.0f}%",
                       "Margin 미사용 (100% 상한)",
                       help="k_today × 전략 비중. Margin 사용 안 하므로 100% 초과 불가.")
@@ -1020,6 +1045,11 @@ elif page == "💰 실시간 현황":
             orders = tc.get_orders(filter=GetOrdersRequest(
                 status=QueryOrderStatus.ALL, after=today_utc, limit=50
             ))
+            # 최근 30일 전체 주문 (체결/취소 포함) — 매매 타임라인용
+            _month_ago = today_utc - _dt.timedelta(days=30)
+            orders_30d = tc.get_orders(filter=GetOrdersRequest(
+                status=QueryOrderStatus.CLOSED, after=_month_ago, limit=500
+            ))
             return {
                 "account": {
                     "equity": float(account.equity),
@@ -1044,6 +1074,12 @@ elif page == "💰 실시간 현황":
                     "fill_avg": float(o.filled_avg_price) if o.filled_avg_price else None,
                     "submitted": str(o.submitted_at) if o.submitted_at else None,
                 } for o in orders],
+                "orders_30d": [{
+                    "filled_at": str(o.filled_at) if o.filled_at else (str(o.submitted_at) if o.submitted_at else None),
+                    "symbol": o.symbol, "side": o.side.value, "qty": float(o.qty),
+                    "status": o.status.value,
+                    "fill_avg": float(o.filled_avg_price) if o.filled_avg_price else None,
+                } for o in orders_30d],
             }
         except Exception as e:
             return {"error": str(e)}
@@ -1093,6 +1129,60 @@ elif page == "💰 실시간 현황":
             st.dataframe(ord_df, use_container_width=True, hide_index=True)
         else:
             st.info("오늘 주문 없음")
+
+        # ── 최근 30일 매매·수정 타임라인 ──────────────────────────
+        st.markdown("---")
+        st.markdown("### 📋 최근 30일 매매 · 운영 수정 타임라인")
+        st.caption("최근 30일 체결(✅)에 우리가 운영 중 적용한 수정(🔧)을 시간순으로 끼워 표시 — "
+                   "수정 시점 전후로 봇 매매가 어떻게 달라졌는지, 백테 정합이 개선됐는지 눈으로 확인용.")
+
+        import datetime as _dtt
+        # 운영 수정 이력 (라이브 봇/백테에 실제 적용한 변경)
+        _fix_events = [
+            ("2026-05-26", "🚀 V1 CHAMP_NOMARGIN 전환", "T2 GOLD_ESCAPE(bm=90) → V1 CHAMP (BASE 로테이션 × VIX 동적-k, cap 1.0)"),
+            ("2026-06-03", "🔧 비대칭 갭필터 (A안)", "롱변기·양변기롱 SOXL 매수는 갭다운(−5%↓)만 차단·갭업 허용, 양변기숏 대칭 유지"),
+            ("2026-06-07", "📉 k 디리스킹 0.65→0.60", "CHAMP_BASE_K 0.65→0.60 (봇·백테 동기). 저VIX 노출 0.90→0.83, 16y MDD 개선, Calmar 정점 유지"),
+            ("2026-06-11", "🔧 롱변기 stop-buy 거부 수리", "강갭업 시 buy-stop이 현재가 아래로 떨어져 Alpaca 거부 → marketable-limit 추격 (PR#12)"),
+            ("2026-06-19", "🌡 VIX9D fast-BEAR + 매일 갱신", "regime에 VIX9D/VIX>1.05 즉시 BEAR. V1 CHAMP 백테 평일 매일 자동 갱신 (PR#13)"),
+        ]
+        _cutoff = (_dtt.date.today() - _dtt.timedelta(days=31)).isoformat()
+
+        _tl_rows = []
+        for _fd, _ft, _fdesc in _fix_events:
+            if _fd < _cutoff:
+                continue
+            _tl_rows.append({"_d": _fd, "날짜": _fd, "구분": "🔧 수정", "종목": "—", "방향": "—",
+                             "수량": "—", "체결가": "—", "내용": f"{_ft} — {_fdesc}"})
+        for _o in data.get("orders_30d", []):
+            if _o.get("status") != "filled" or not _o.get("fill_avg"):
+                continue
+            _dd = (_o.get("filled_at") or "")[:10]
+            _side_k = "🟢 매수" if _o.get("side") == "buy" else "🔴 매도"
+            _tl_rows.append({"_d": _dd, "날짜": _dd, "구분": "✅ 체결", "종목": _o.get("symbol", "—"),
+                             "방향": _side_k, "수량": f"{_o.get('qty', 0):,.0f}",
+                             "체결가": f"${_o.get('fill_avg', 0):.2f}", "내용": "—"})
+
+        if _tl_rows:
+            _tl_df = (pd.DataFrame(_tl_rows).sort_values("_d", ascending=False)
+                      .drop(columns="_d").reset_index(drop=True))
+
+            def _hl_fix(_row):
+                _is_fix = _row["구분"] == "🔧 수정"
+                return ["background-color:#3a2e12;color:#fde68a;font-weight:600" if _is_fix else "" for _ in _row]
+
+            _tl_sty = _tl_df.style.apply(_hl_fix, axis=1)
+            st.dataframe(_tl_sty, use_container_width=True, hide_index=True,
+                         height=min((len(_tl_df) + 1) * 35 + 3, 640))
+            _n_fills = sum(1 for _r in _tl_rows if _r["구분"] == "✅ 체결")
+            _n_fix = sum(1 for _r in _tl_rows if _r["구분"] == "🔧 수정")
+            st.caption(f"최근 30일: 체결 **{_n_fills}건** + 운영 수정 **{_n_fix}건** · 🔧 황색 행 = 수정 시점 (신규순).")
+        else:
+            st.info("최근 30일 체결 내역 없음 — 레짐이 현금 유지 중이었거나 진입 조건 미충족.")
+
+        # 전체 수정 이력 (30일 밖 포함)
+        with st.expander("🛠 운영 수정 이력 전체 (시간순)"):
+            for _fd, _ft, _fdesc in _fix_events:
+                st.markdown(f"- **`{_fd}`** {_ft} — {_fdesc}")
 
     st.markdown("---")
     st.markdown("**🔗 Alpaca BUBE paper 계정**: https://app.alpaca.markets/paper/dashboard/overview")
