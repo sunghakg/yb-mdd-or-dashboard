@@ -2200,8 +2200,10 @@ elif page == "📔 매매일지":
                 _soxl_df["k값"]      = _soxl_df["날짜_str"].apply(lambda d: _dval("k_today", d))
 
                 # SOXL 종가 라인 + 선택일 강조
-                _x_enc = _alt_dd.X("날짜_표시:O", sort=_x_domain, title="날짜",
-                                    axis=_alt_dd.Axis(labelAngle=0))
+                _x_enc = _alt_dd.X("날짜_표시:O", sort=_x_domain, title=None,
+                                    axis=_alt_dd.Axis(labels=False, ticks=False))
+                _x_enc_lbl = _alt_dd.X("날짜_표시:O", sort=_x_domain, title="날짜",
+                                        axis=_alt_dd.Axis(labelAngle=0))
                 _y_enc = _alt_dd.Y("종가:Q", title="SOXL 종가 ($)",
                                     scale=_alt_dd.Scale(zero=False, nice=True, padding=18),
                                     axis=_alt_dd.Axis(format="$,.2f"))
@@ -2288,41 +2290,65 @@ elif page == "📔 매매일지":
                     }
                     (_buy_rows if _is_buy else _sell_rows).append(_row)
 
-                _mk_charts = [_soxl_area, _soxl_vrule, _soxl_line]
-                for _mk_rows, _shape, _color in [
-                    (_buy_rows,  "triangle-up",   "#22c55e"),
-                    (_sell_rows, "triangle-down",  "#ef4444"),
-                ]:
-                    if _mk_rows:
-                        _mk_df = pd.DataFrame(_mk_rows)
-                        _mk_charts.append(
-                            _alt_dd.Chart(_mk_df).mark_point(
-                                shape=_shape, size=200, filled=True, color=_color,
-                                stroke="white", strokeWidth=0.8,
-                            ).encode(
-                                x=_alt_dd.X("날짜_표시:O", sort=_x_domain),
-                                y=_alt_dd.Y("가격:Q"),
-                                tooltip=[
-                                    _alt_dd.Tooltip("날짜_str:N",  title="날짜"),
-                                    _alt_dd.Tooltip("설명:N",      title="매매"),
-                                    _alt_dd.Tooltip("종가:Q",      title="SOXL 종가", format="$,.2f"),
-                                    _alt_dd.Tooltip("엔진:N",      title="엔진"),
-                                    _alt_dd.Tooltip("종목:N",      title="종목"),
-                                    _alt_dd.Tooltip("액션:N",      title="액션"),
-                                    _alt_dd.Tooltip("손익:N",      title="손익"),
-                                ],
-                            )
-                        )
-                # 선택일 링 + 종가 라벨을 최상단에
-                _mk_charts += [_soxl_sel_dot, _soxl_sel_lbl]
+                # 가격 패널 (라인 + 선택일 강조만 — 매매 마커는 아래 별도 스트립으로 분리해 겹침 제거)
+                # area 제외: mark_area가 0까지 채워 zero=False를 무력화 → 라인이 가격 범위에 꽉 차도록 라인만 사용
+                _price_panel = _alt_dd.layer(
+                    _soxl_vrule, _soxl_line, _soxl_sel_dot, _soxl_sel_lbl
+                ).properties(height=200)
+
+                # 매매 마커: (날짜, 진입/청산)별 집계 → 2-레인 스트립 (같은 날 진입·청산이 겹치지 않음)
+                _LANES = ["▲ 진입", "▼ 청산"]
+                _strip_rows = []
+                for _grp, _lane in [(_buy_rows, "▲ 진입"), (_sell_rows, "▼ 청산")]:
+                    _bd = {}
+                    for _r in _grp:
+                        _bd.setdefault(_r["날짜_표시"], []).append(_r)
+                    for _disp, _lst in _bd.items():
+                        _det = " · ".join(f"{x['엔진']} {x['액션']}({x['종목']})" for x in _lst)
+                        _strip_rows.append({
+                            "날짜_표시": _disp, "날짜_str": _lst[0]["날짜_str"], "구분": _lane,
+                            "건수": len(_lst), "건수라벨": (str(len(_lst)) if len(_lst) > 1 else ""),
+                            "내역": _det,
+                        })
 
                 _sel_close_txt = f" · 선택일 종가 **${_sel_close:,.2f}**" if _sel_close is not None else ""
                 st.markdown(f"**📈 SOXL 선택일 전후 흐름**{_sel_close_txt}")
-                st.caption("🟡 선택일(수직선·링) · 🟢▲ 진입 · 🔴▼ 청산 · 점=거래일 종가 / 마우스 호버 시 상세")
-                st.altair_chart(
-                    _alt_dd.layer(*_mk_charts).resolve_scale(y="shared").properties(height=260),
-                    use_container_width=True,
-                )
+                st.caption("🟡 선택일(수직선·링) · 위=가격 / 아래 스트립 = 🟢▲ 진입 · 🔴▼ 청산 (같은 날도 레인 분리). 숫자=당일 건수, 호버 시 상세")
+
+                if _strip_rows:
+                    _strip_df = pd.DataFrame(_strip_rows)
+                    _strip_y = _alt_dd.Y("구분:N", sort=_LANES, title=None,
+                                          scale=_alt_dd.Scale(domain=_LANES),
+                                          axis=_alt_dd.Axis(labelFontSize=12, labelLimit=80))
+                    _strip_layers = []
+                    if not _sel_soxl_row.empty:
+                        _strip_layers.append(_alt_dd.Chart(_sel_soxl_row).mark_rule(
+                            color="#fbbf24", strokeWidth=1.5, strokeDash=[5, 3], opacity=0.7
+                        ).encode(x=_x_enc_lbl))
+                    _strip_layers.append(_alt_dd.Chart(_strip_df).mark_point(
+                        size=220, filled=True, stroke="white", strokeWidth=0.8
+                    ).encode(
+                        x=_x_enc_lbl, y=_strip_y,
+                        shape=_alt_dd.Shape("구분:N", scale=_alt_dd.Scale(
+                            domain=_LANES, range=["triangle-up", "triangle-down"]), legend=None),
+                        color=_alt_dd.Color("구분:N", scale=_alt_dd.Scale(
+                            domain=_LANES, range=["#22c55e", "#ef4444"]), legend=None),
+                        tooltip=[
+                            _alt_dd.Tooltip("날짜_str:N", title="날짜"),
+                            _alt_dd.Tooltip("구분:N", title="구분"),
+                            _alt_dd.Tooltip("건수:Q", title="건수"),
+                            _alt_dd.Tooltip("내역:N", title="내역"),
+                        ],
+                    ))
+                    _strip_layers.append(_alt_dd.Chart(_strip_df).mark_text(
+                        dx=11, color="#e5e7eb", fontSize=10, fontWeight="bold"
+                    ).encode(x=_x_enc_lbl, y=_strip_y, text="건수라벨:N"))
+                    _strip_panel = _alt_dd.layer(*_strip_layers).properties(height=88)
+                    _final_chart = _alt_dd.vconcat(_price_panel, _strip_panel).resolve_scale(x="shared")
+                else:
+                    _final_chart = _price_panel.properties(height=230)
+
+                st.altair_chart(_final_chart, use_container_width=True)
         except Exception as _e_soxl:
             st.caption(f"SOXL 차트 로딩 실패: {_e_soxl}")
 
