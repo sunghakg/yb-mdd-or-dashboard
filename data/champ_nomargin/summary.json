@@ -8,38 +8,38 @@
       "hi": 2.0
     },
     "alloc_cap": 1.0,
-    "period": "2010-05-25 ~ 2026-06-23"
+    "period": "2010-05-25 ~ 2026-06-24"
   },
   "headline_16y_CHAMP": {
-    "CAGR": 60.72561084922774,
+    "CAGR": 60.20153472108909,
     "MDD": -26.332390584908726,
-    "Sharpe": 1.6984843043839966,
-    "Calmar": 2.306118415394841,
-    "Final_mult": 2059.3209429420594
+    "Sharpe": 1.6866734717469052,
+    "Calmar": 2.2862160777605585,
+    "Final_mult": 1956.4878752109892
   },
   "headline_16y_BASE": {
-    "CAGR": 50.49258861875761,
+    "CAGR": 50.01605252717669,
     "MDD": -25.03538445292135,
-    "Sharpe": 1.593866583098505,
-    "Calmar": 2.0168489408943624,
-    "Final_mult": 715.0494675094778
+    "Sharpe": 1.5813399783713746,
+    "Calmar": 1.9978144382496341,
+    "Final_mult": 680.2536790704228
   },
   "bootstrap_CHAMP": {
-    "cagr_p05": 41.40300212793008,
-    "cagr_p50": 58.9466732005589,
-    "cagr_p95": 78.74727514101232,
-    "mdd_p05": -43.32604777648873,
-    "mdd_p50": -31.290588354503424,
-    "mdd_p95": -24.107461291228375,
-    "cal_p05": 1.072102806973575,
-    "cal_p50": 1.8680901953558413,
-    "cal_p95": 2.985095811390143,
-    "p_mdd_worse_than_30": 59.21999999999999,
-    "p_mdd_worse_than_40": 10.2,
+    "cagr_p05": 41.588061321858866,
+    "cagr_p50": 59.293893854086846,
+    "cagr_p95": 79.20639586217204,
+    "mdd_p05": -43.175702454796,
+    "mdd_p50": -31.360018024440915,
+    "mdd_p95": -23.76851152117643,
+    "cal_p05": 1.068876315029506,
+    "cal_p50": 1.8764833424052454,
+    "cal_p95": 3.0377736987509802,
+    "p_mdd_worse_than_30": 59.540000000000006,
+    "p_mdd_worse_than_40": 10.32,
     "p_cagr_positive": 100.0,
     "p_cagr_above_30": 99.83999999999999
   },
-  "trades_count": 5402,
+  "trades_count": 5403,
   "files": {
     "xlsx": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/bube_champ_nomargin_16yr.xlsx",
     "equity_csv": "/home/runner/work/yb-mdd-or-trader/yb-mdd-or-trader/backtest/bube_champ_nomargin_16yr/equity_curves.csv",
