@@ -50,7 +50,8 @@ def load_svg(name: str) -> str:
 #       VVIX shuffle z=-0.93 → V2 추가 알파는 환상으로 판명. paper 봇은 원래부터 V1 전용.
 # 다시 켜려면 True: 상단 비교 배너 + Tab 8 + equity V2 곡선 + 연도별 V2 컬럼이 복원됨.
 SHOW_V2 = False
-st.set_page_config(page_title="BUBE V1 CHAMP_NOMARGIN Dashboard", layout="wide", page_icon="🏆")
+st.set_page_config(page_title="BUBE V1 CHAMP_NOMARGIN Dashboard", layout="wide", page_icon="🏆",
+                   initial_sidebar_state="expanded")
 
 # Alpaca credentials from Streamlit secrets (cloud) or env (local)
 import os as _os
@@ -114,12 +115,12 @@ H_BOOT = champ_summary["bootstrap_CHAMP"]
 # Header
 # ───────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a,#3b82f6);padding:24px 32px;border-radius:12px;color:white;margin-bottom:16px">
-  <h1 style="margin:0;font-size:1.8em">🏆 BUBE V1 — 반도체 3배 ETF(SOXL) 동적 비중 전략</h1>
-  <div style="opacity:0.92;margin-top:6px">
-    레짐 감지(BULL/BEAR) → 엔진 전환 → <b>VIX 기반 비중 자동 조절</b>&nbsp;(VIX↑ 비중↓ · VIX↓ 비중↑) · Margin 미사용
+<div style="background:linear-gradient(135deg,#2E3440 0%,#3B4252 55%,#434C5E 100%);border-left:5px solid #34A5C5;padding:24px 32px;border-radius:12px;color:#ECEFF4;margin-bottom:16px">
+  <h1 style="margin:0;font-size:1.8em;color:#ECEFF4">🏆 BUBE V1 — 반도체 3배 ETF(SOXL) 동적 비중 전략</h1>
+  <div style="opacity:0.92;margin-top:6px;color:#E5E9F0">
+    레짐 감지(BULL/BEAR) → 엔진 전환 → <b style="color:#8FBCBB">VIX 기반 비중 자동 조절</b>&nbsp;(VIX↑ 비중↓ · VIX↓ 비중↑) · Margin 미사용
   </div>
-  <div style="opacity:0.75;margin-top:4px;font-size:0.92em">
+  <div style="opacity:0.72;margin-top:4px;font-size:0.92em;color:#D8DEE9">
     백테스트 16년({champ_summary['spec']['period']}) · Alpaca 페이퍼 트레이딩 운영 중
   </div>
 </div>
@@ -164,19 +165,19 @@ _mtime_eq = (CHAMP / "equity_curves.csv").stat().st_mtime if (CHAMP / "equity_cu
 _r16, _r10, _r5 = _period_stats(_mtime_eq)
 
 def _cal_color(v):
-    if v >= 2.0: return "#4ade80"
-    if v >= 1.0: return "#facc15"
-    return "#f87171"
+    if v >= 2.0: return "#A3BE8C"
+    if v >= 1.0: return "#EBCB8B"
+    return "#BF616A"
 
 def _mdd_color(v):
-    if v >= -20: return "#4ade80"
-    if v >= -35: return "#facc15"
-    return "#f87171"
+    if v >= -20: return "#A3BE8C"
+    if v >= -35: return "#EBCB8B"
+    return "#BF616A"
 
 st.markdown(f"""
 <table style="width:100%;border-collapse:collapse;font-size:0.88em;margin-top:6px">
   <thead>
-    <tr style="border-bottom:1px solid #334155;color:#94a3b8;text-align:right">
+    <tr style="border-bottom:1px solid #434C5E;color:#9AA5B8;text-align:right">
       <th style="text-align:left;padding:4px 8px">기간</th>
       <th style="padding:4px 12px">Calmar</th>
       <th style="padding:4px 12px">CAGR</th>
@@ -185,26 +186,26 @@ st.markdown(f"""
     </tr>
   </thead>
   <tbody>
-    <tr style="border-bottom:1px solid #1e293b">
-      <td style="padding:5px 8px;color:#e2e8f0;font-weight:600">16년 (전체)</td>
+    <tr style="border-bottom:1px solid #434C5E">
+      <td style="padding:5px 8px;color:#D8DEE9;font-weight:600">16년 (전체)</td>
       <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r16['Calmar'])};font-weight:700">{_r16['Calmar']:.2f}</td>
-      <td style="padding:5px 12px;text-align:right;color:#60a5fa">{_r16['CAGR']:+.2f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:#88C0D0">{_r16['CAGR']:+.2f}%</td>
       <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r16['MDD'])}">{_r16['MDD']:.2f}%</td>
-      <td style="padding:5px 12px;text-align:right;color:#e2e8f0">{_money(_r16['mult']*100_000)}</td>
+      <td style="padding:5px 12px;text-align:right;color:#D8DEE9">{_money(_r16['mult']*100_000)}</td>
     </tr>
-    <tr style="border-bottom:1px solid #1e293b">
-      <td style="padding:5px 8px;color:#e2e8f0;font-weight:600">10년 (롤링)</td>
+    <tr style="border-bottom:1px solid #434C5E">
+      <td style="padding:5px 8px;color:#D8DEE9;font-weight:600">10년 (롤링)</td>
       <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r10['Calmar'])};font-weight:700">{_r10['Calmar']:.2f}</td>
-      <td style="padding:5px 12px;text-align:right;color:#60a5fa">{_r10['CAGR']:+.2f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:#88C0D0">{_r10['CAGR']:+.2f}%</td>
       <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r10['MDD'])}">{_r10['MDD']:.2f}%</td>
-      <td style="padding:5px 12px;text-align:right;color:#e2e8f0">{_money(_r10['mult']*100_000)}</td>
+      <td style="padding:5px 12px;text-align:right;color:#D8DEE9">{_money(_r10['mult']*100_000)}</td>
     </tr>
     <tr>
-      <td style="padding:5px 8px;color:#e2e8f0;font-weight:600"> 5년 (롤링)</td>
+      <td style="padding:5px 8px;color:#D8DEE9;font-weight:600"> 5년 (롤링)</td>
       <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r5['Calmar'])};font-weight:700">{_r5['Calmar']:.2f}</td>
-      <td style="padding:5px 12px;text-align:right;color:#60a5fa">{_r5['CAGR']:+.2f}%</td>
+      <td style="padding:5px 12px;text-align:right;color:#88C0D0">{_r5['CAGR']:+.2f}%</td>
       <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r5['MDD'])}">{_r5['MDD']:.2f}%</td>
-      <td style="padding:5px 12px;text-align:right;color:#e2e8f0">{_money(_r5['mult']*100_000)}</td>
+      <td style="padding:5px 12px;text-align:right;color:#D8DEE9">{_money(_r5['mult']*100_000)}</td>
     </tr>
   </tbody>
 </table>
@@ -254,8 +255,8 @@ v2_summary = load_json(V2DIR / "summary.json")
 if SHOW_V2 and v2_summary is not None:
     H_V2 = v2_summary["V2_FINAL"]
     st.markdown(f"""
-<div style="background:#0e1a2e;border-left:4px solid #f59e0b;padding:10px 16px;border-radius:6px;margin:8px 0 4px;color:#e5e7eb">
-  <span style="color:#f59e0b;font-weight:600">🆚 V2_FINAL 백테 비교 (paper 봇 미적용 — 운영은 V1 그대로)</span>
+<div style="background:#2E3440;border-left:4px solid #D08770;padding:10px 16px;border-radius:6px;margin:8px 0 4px;color:#E5E9F0">
+  <span style="color:#D08770;font-weight:600">🆚 V2_FINAL 백테 비교 (paper 봇 미적용 — 운영은 V1 그대로)</span>
   &nbsp;·&nbsp;
   16y Cal <b>{H_V2['Calmar']:.2f}</b> (V1 {H_CHAMP['Calmar']:.2f}) &nbsp;·&nbsp;
   CAGR <b>{H_V2['CAGR_pct']:.2f}%</b> (V1 {H_CHAMP['CAGR']:.2f}%) &nbsp;·&nbsp;
@@ -270,7 +271,7 @@ st.markdown("---")
 # ── Sidebar navigation ──────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-<div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a);padding:14px 16px;border-radius:10px;color:white;margin-bottom:14px;text-align:center">
+<div style="background:linear-gradient(135deg,#3B4252,#434C5E);border-left:4px solid #34A5C5;padding:14px 16px;border-radius:10px;color:#ECEFF4;margin-bottom:14px;text-align:center">
   <div style="font-size:1.12em;font-weight:700;letter-spacing:0.02em">🏆 BUBE V1</div>
   <div style="opacity:0.8;font-size:0.82em;margin-top:3px">SOXL 동적 비중 전략</div>
 </div>
@@ -287,7 +288,17 @@ with st.sidebar:
         "🔍 데이터 정확성",
         "📖 용어 사전",
     ]
-    page = st.radio("페이지", _pages, label_visibility="collapsed")
+    # ── DS 스타일 버튼 네비게이션 (활성 페이지 = primary) ──
+    if "nav_page" not in st.session_state:
+        st.session_state.nav_page = _pages[0]
+    if st.session_state.nav_page not in _pages:
+        st.session_state.nav_page = _pages[0]
+    for _p in _pages:
+        if st.button(_p, key=f"nav_{_p}", use_container_width=True,
+                     type="primary" if st.session_state.nav_page == _p else "secondary"):
+            st.session_state.nav_page = _p
+            st.rerun()
+    page = st.session_state.nav_page
     st.markdown("---")
     st.caption("📊 16년 백테 핵심 지표")
     _sb1, _sb2 = st.columns(2)
@@ -307,7 +318,7 @@ if page == "📊 백테스트":
     st.subheader("📊 백테스트 — BUBE V1 전략 개요")
 
     st.markdown("""
-<div style="background:#0f172a;border-left:4px solid #3b82f6;padding:14px 20px;border-radius:8px;margin-bottom:16px;color:#e2e8f0;line-height:1.9">
+<div style="background:#3B4252;border-left:4px solid #34A5C5;padding:14px 20px;border-radius:8px;margin-bottom:16px;color:#D8DEE9;line-height:1.9">
 <b>전략 핵심 3단계</b><br>
 <b>1️⃣ 레짐 감지</b> — QQQ·SPY·SMH 200일선 + VIX9D/SOXL 모멘텀으로 매일 시장 상태 판정 (BULL / NEUTRAL / BEAR)<br>
 <b>2️⃣ 엔진 전환</b> — BULL·NEUTRAL → <b>롱변기</b>(SOXL 단방향 매수) · BEAR → <b>양변기</b>(SOXL롱+SOXS숏) · BEAR 90일+ → <b>황금변기</b>(변동성 돌파)<br>
@@ -489,7 +500,7 @@ max_bear   = 90일 (GOLD_ESCAPE 트리거)
             y=alt.Y("자산:Q", title="자산 ($)", axis=alt.Axis(format="$,.0f")),
             color=alt.Color("전략:N", scale=alt.Scale(
                 domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"],
-                range=["#3b82f6", "#6b7280"])),
+                range=["#34A5C5", "#4C566A"])),
             tooltip=[
                 alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
                 alt.Tooltip("전략:N", title="전략"),
@@ -615,16 +626,16 @@ elif page == "🎲 확률 분포":
     for _, _row in _bv_df.iterrows():
         _fmt = ".2f" if _row["unit"] == "" else "+.2f"
         _band = _alt.Chart(pd.DataFrame({"x": [_row["p50"]], "low": [_row["low"]], "high": [_row["high"]]})).mark_rule(
-            color="#6b7280", strokeWidth=12, opacity=0.3
+            color="#4C566A", strokeWidth=12, opacity=0.3
         ).encode(x=_alt.X("low:Q"), x2="high:Q", y=_alt.value(0))
         _med  = _alt.Chart(pd.DataFrame({"x": [_row["p50"]]})).mark_rule(
-            color="#3b82f6", strokeWidth=3
+            color="#34A5C5", strokeWidth=3
         ).encode(x=_alt.X("x:Q", title=f"{_row['지표']} ({_row['unit']})" if _row['unit'] else _row['지표']))
         _p05l = _alt.Chart(pd.DataFrame({"x": [_row["low"]]})).mark_rule(
-            color="#f87171", strokeWidth=1.5, strokeDash=[4, 2]
+            color="#BF616A", strokeWidth=1.5, strokeDash=[4, 2]
         ).encode(x="x:Q")
         _p95l = _alt.Chart(pd.DataFrame({"x": [_row["high"]]})).mark_rule(
-            color="#4ade80", strokeWidth=1.5, strokeDash=[4, 2]
+            color="#A3BE8C", strokeWidth=1.5, strokeDash=[4, 2]
         ).encode(x="x:Q")
         _boot_charts.append((_alt.layer(_band, _med, _p05l, _p95l)
             .properties(title=f"{_row['지표']}: P5={_row['low']:.2f} | P50={_row['p50']:.2f} | P95={_row['high']:.2f}", height=80, width=200)
@@ -648,10 +659,10 @@ elif page == "🎲 확률 분포":
 elif page == "📅 연도별 성과":
     st.subheader("📅 연도별 성과 — 17년 🏆 CHAMP(우리 매매법) vs BASE")
     st.markdown(
-        "<div style='background:#0f172a;border-left:4px solid #3b82f6;padding:10px 16px;border-radius:8px;"
-        "margin-bottom:12px;color:#cbd5e1;line-height:1.6'>"
-        "<b style='color:#60a5fa'>🏆 CHAMP_NOMARGIN = 우리가 실제로 운영하는 V1 매매법</b> "
-        "(VIX 동적 비중). 아래 <b style='color:#93c5fd'>파란 칸</b>이 우리 성과이고, BASE(고정 비중)는 비교 기준선입니다. "
+        "<div style='background:#3B4252;border-left:4px solid #34A5C5;padding:10px 16px;border-radius:8px;"
+        "margin-bottom:12px;color:#E5E9F0;line-height:1.6'>"
+        "<b style='color:#88C0D0'>🏆 CHAMP_NOMARGIN = 우리가 실제로 운영하는 V1 매매법</b> "
+        "(VIX 동적 비중). 아래 <b style='color:#88C0D0'>파란 칸</b>이 우리 성과이고, BASE(고정 비중)는 비교 기준선입니다. "
         "<b>🏆 표시 연도 = CHAMP가 BASE를 이긴 해</b>.</div>",
         unsafe_allow_html=True,
     )
@@ -692,13 +703,13 @@ elif page == "📅 연도별 성과":
         _delta_cols = ["Δ수익 (우위)", "Δ MDD (우위)"]
 
         def _delta_clr(v):
-            if isinstance(v, str) and v.startswith("+"): return "color:#4ade80;font-weight:600"
-            if isinstance(v, str) and v.startswith("-"): return "color:#f87171"
+            if isinstance(v, str) and v.startswith("+"): return "color:#A3BE8C;font-weight:600"
+            if isinstance(v, str) and v.startswith("-"): return "color:#BF616A"
             return ""
 
         _sty = (
             df_year.style
-            .set_properties(subset=_champ_cols, **{"background-color": "#15294a", "color": "#dbeafe", "font-weight": "700"})
+            .set_properties(subset=_champ_cols, **{"background-color": "#3B4252", "color": "#88C0D0", "font-weight": "700"})
             .set_properties(subset=["🏆"], **{"text-align": "center", "font-size": "1.1em"})
             .map(_delta_clr, subset=_delta_cols)
         )
@@ -737,7 +748,7 @@ elif page == "📅 연도별 성과":
                 x=_alt.X("연도:O", title="연도"),
                 y=_alt.Y("자산:Q", title="자산 ($)", axis=_alt.Axis(format="$,.0f")),
                 color=_alt.Color("전략:N", scale=_alt.Scale(
-                    domain=[_CHAMP_LBL, _BASE_LBL], range=["#3b82f6", "#9ca3af"]),
+                    domain=[_CHAMP_LBL, _BASE_LBL], range=["#34A5C5", "#9AA5B8"]),
                     legend=_alt.Legend(title=None, orient="top")),
                 strokeWidth=_alt.StrokeWidth("전략:N", scale=_alt.Scale(
                     domain=[_CHAMP_LBL, _BASE_LBL], range=[3.5, 1.5]), legend=None),
@@ -756,7 +767,7 @@ elif page == "📅 연도별 성과":
             _alt.Chart(_dr_df).mark_bar().encode(
                 x=_alt.X("연도:O", title="연도"),
                 y=_alt.Y("Δ Ret pp:Q", title="Δ Return (pp)"),
-                color=_alt.condition(_alt.datum["Δ Ret pp"] >= 0, _alt.value("#4ade80"), _alt.value("#f87171")),
+                color=_alt.condition(_alt.datum["Δ Ret pp"] >= 0, _alt.value("#A3BE8C"), _alt.value("#BF616A")),
                 tooltip=[_alt.Tooltip("연도:O", title="연도"),
                          _alt.Tooltip("Δ Ret pp:Q", title="Δ Ret", format="+.2f")],
             ).properties(height=240),
@@ -812,7 +823,7 @@ elif page == "🔄 기간별 안정성":
                 x=_alt.X("window:N", title="윈도우", sort=None),
                 y=_alt.Y("Calmar:Q", title="Calmar"),
                 color=_alt.Color("전략:N", scale=_alt.Scale(
-                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"], range=["#3b82f6", "#6b7280"])),
+                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"], range=["#34A5C5", "#4C566A"])),
                 xOffset=_alt.XOffset("전략:N"),
                 tooltip=[_alt.Tooltip("window:N", title="윈도우"),
                          _alt.Tooltip("전략:N", title="전략"),
@@ -833,7 +844,7 @@ elif page == "🔄 기간별 안정성":
                 x=_alt.X("window:N", title="윈도우", sort=None),
                 y=_alt.Y("CAGR (%):Q", title="CAGR (%)"),
                 color=_alt.Color("전략:N", scale=_alt.Scale(
-                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"], range=["#3b82f6", "#6b7280"])),
+                    domain=["V1 CHAMP_NOMARGIN", "BASE k=0.60"], range=["#34A5C5", "#4C566A"])),
                 xOffset=_alt.XOffset("전략:N"),
                 tooltip=[_alt.Tooltip("window:N", title="윈도우"),
                          _alt.Tooltip("전략:N", title="전략"),
@@ -865,7 +876,7 @@ elif page == "💰 실시간 현황":
 
     # ── Section A: Spec card ──
     st.markdown("""
-<div style="background:linear-gradient(135deg,#0a1a3a,#1e3a8a);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
+<div style="background:linear-gradient(135deg,#2E3440,#4C566A);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
   <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">🏆 V1 CHAMP_NOMARGIN Overlay (운영 중)</div>
   <div style="opacity:0.92;line-height:1.7">
     <b>k_today</b> = 0.60 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0) &nbsp;<span style="opacity:0.7">(baseline 0.60 — 2026-06-07 디리스킹)</span><br>
@@ -1226,15 +1237,15 @@ elif page == "💰 실시간 현황":
 
             def _hl_row(_row):
                 if _row["유형"] == "🔧 수정":
-                    return ["background-color:#3a2e12;color:#fde68a;font-weight:600"] * len(_row)
+                    return ["background-color:#4C566A;color:#EBCB8B;font-weight:600"] * len(_row)
                 return [""] * len(_row)
 
             def _clr_pnl(v):
                 if isinstance(v, str) and v not in ("—", "진입"):
                     if "+" in v:
-                        return "color:#4ade80"
+                        return "color:#A3BE8C"
                     if "-" in v or "−" in v:
-                        return "color:#f87171"
+                        return "color:#BF616A"
                 return ""
 
             _tl_sty = (_tl_df.style.apply(_hl_row, axis=1)
@@ -1284,7 +1295,7 @@ def _render_v2_tab():
 
         # ── A. Spec card ──
         st.markdown(f"""
-<div style="background:linear-gradient(135deg,#1f2937,#374151);padding:18px 22px;border-radius:10px;color:#f9fafb;margin:8px 0 16px">
+<div style="background:linear-gradient(135deg,#3B4252,#434C5E);padding:18px 22px;border-radius:10px;color:#ECEFF4;margin:8px 0 16px">
   <div style="font-size:1.05em;font-weight:700;margin-bottom:6px">🆚 V2_FINAL Spec (D6b conditional VVIX + T4c NDX/SPY RS sizing)</div>
   <div style="font-family:monospace;font-size:0.9em;opacity:0.92;line-height:1.6">
     k = 0.65 × clip(20/VIX, 0.5, 2.0)<br>
@@ -1435,7 +1446,7 @@ def _render_v2_tab():
                 y=alt.Y("Δ MDD pp:Q", title="Δ MDD (pp)"),
                 color=alt.condition(
                     alt.datum["Δ MDD pp"] >= 0,
-                    alt.value("#22c55e"), alt.value("#ef4444"),
+                    alt.value("#A3BE8C"), alt.value("#BF616A"),
                 ),
                 tooltip=[alt.Tooltip("연도:O"), alt.Tooltip("Δ MDD pp:Q", format="+.2f")],
             ).properties(height=240),
@@ -1573,7 +1584,7 @@ elif page == "🔬 백테 vs 페이퍼":
     st.caption("같은 기간에서 백테스트(이론 시뮬레이션)와 실제 페이퍼 트레이딩 결과를 나란히 비교합니다.")
 
     st.markdown("""
-<div style="background:#0f172a;border-left:4px solid #f59e0b;padding:12px 18px;border-radius:8px;margin-bottom:12px;color:#e2e8f0;line-height:1.8">
+<div style="background:#3B4252;border-left:4px solid #D08770;padding:12px 18px;border-radius:8px;margin-bottom:12px;color:#D8DEE9;line-height:1.8">
 <b>📌 백테스트</b> = 역사적 데이터로 완벽한 체결을 가정한 시뮬레이션 (이론적 상한)<br>
 <b>🤖 페이퍼 트레이딩</b> = Alpaca 가상계좌에서 봇이 실제로 실행한 결과<br>
 <span style="opacity:0.8;font-size:0.92em">두 곡선이 다른 이유: 슬리피지·체결 시점 차이·VIX 시차·갭업 폴백 등</span>
@@ -1723,7 +1734,7 @@ elif page == "🔬 백테 vs 페이퍼":
                     y=_alt.Y("자산:Q", title="자산 ($)", axis=_alt.Axis(format="$,.0f")),
                     color=_alt.Color("구분:N", scale=_alt.Scale(
                         domain=["📊 백테스트 (이론)", "🤖 페이퍼 (실제)"],
-                        range=["#6b7280", "#3b82f6"])),
+                        range=["#4C566A", "#34A5C5"])),
                     tooltip=[_alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
                              _alt.Tooltip("구분:N", title="구분"),
                              _alt.Tooltip("자산:Q", title="자산", format="$,.0f")],
@@ -1751,7 +1762,7 @@ elif page == "🔬 백테 vs 페이퍼":
                 _alt.Chart(_gp_df).mark_bar().encode(
                     x=_alt.X("날짜:T", title="날짜"),
                     y=_alt.Y("괴리:Q", title="페이퍼 − 백테 ($)"),
-                    color=_alt.condition(_alt.datum["괴리"] >= 0, _alt.value("#4ade80"), _alt.value("#f87171")),
+                    color=_alt.condition(_alt.datum["괴리"] >= 0, _alt.value("#A3BE8C"), _alt.value("#BF616A")),
                     tooltip=[_alt.Tooltip("날짜:T", title="날짜", format="%Y-%m-%d"),
                              _alt.Tooltip("괴리:Q", title="페이퍼−백테", format="$+,.0f")],
                 ).properties(height=160),
@@ -1813,13 +1824,13 @@ elif page == "🔬 백테 vs 페이퍼":
                         st.markdown("∞")
                     elif _k in _is_pct and isinstance(_vb, float) and _vb != float("inf"):
                         _d = _v - _vb
-                        _color = "#4ade80" if _d >= 0 and _k != "MDD (최대낙폭)" else "#f87171"
-                        if _k == "MDD (최대낙폭)": _color = "#4ade80" if _d >= 0 else "#f87171"
+                        _color = "#A3BE8C" if _d >= 0 and _k != "MDD (최대낙폭)" else "#BF616A"
+                        if _k == "MDD (최대낙폭)": _color = "#A3BE8C" if _d >= 0 else "#BF616A"
                         st.markdown(f"`{_v:+.2f}%` <span style='color:{_color};font-size:0.85em'>{_d:+.2f}pp</span>",
                                     unsafe_allow_html=True)
                     elif isinstance(_vb, float) and not isinstance(_v, str):
                         _d = _v - _vb
-                        _color = "#4ade80" if _d >= 0 else "#f87171"
+                        _color = "#A3BE8C" if _d >= 0 else "#BF616A"
                         st.markdown(f"`{_v:.2f}` <span style='color:{_color};font-size:0.85em'>{_d:+.2f}</span>",
                                     unsafe_allow_html=True)
                     else:
@@ -2065,7 +2076,7 @@ elif page == "📔 매매일지":
         import altair as _alt
         _eq_j_df = pd.DataFrame({"날짜": _eq_rec.index, "자산": _eq_rec.values}).dropna()
         st.altair_chart(
-            _alt.Chart(_eq_j_df).mark_line(color="#3b82f6", strokeWidth=2).encode(
+            _alt.Chart(_eq_j_df).mark_line(color="#34A5C5", strokeWidth=2).encode(
                 x=_alt.X("날짜:T", title="날짜"),
                 y=_alt.Y("자산:Q", title="V1 자산 ($)", axis=_alt.Axis(format="$,.0f"),
                          scale=_alt.Scale(zero=False)),
@@ -2192,14 +2203,14 @@ elif page == "📔 매매일지":
         _act_sel  = _win.at[_sel_ts, "active_CHAMP"]        if _sin and "active_CHAMP"   in _win.columns else "—"
 
         _rg_emoji = {"BULL": "🟢", "NEUTRAL": "🟡", "BEAR": "🔴"}.get(_rg_sel, "")
-        _ret_color = "#ef4444" if not pd.isna(_sel_ret) and _sel_ret < 0 else "#22c55e"
+        _ret_color = "#BF616A" if not pd.isna(_sel_ret) and _sel_ret < 0 else "#A3BE8C"
 
         st.markdown(f"""
-<div style="background:#1e293b;border-left:4px solid {_ret_color};padding:12px 16px;border-radius:8px;margin-bottom:16px">
-  <span style="color:#94a3b8;font-size:0.85em">선택 날짜</span><br>
-  <span style="color:#f1f5f9;font-size:1.25em;font-weight:700">{_sel_date_str}</span>
+<div style="background:#434C5E;border-left:4px solid {_ret_color};padding:12px 16px;border-radius:8px;margin-bottom:16px">
+  <span style="color:#9AA5B8;font-size:0.85em">선택 날짜</span><br>
+  <span style="color:#ECEFF4;font-size:1.25em;font-weight:700">{_sel_date_str}</span>
   &nbsp;&nbsp;<span style="color:{_ret_color};font-size:1.5em;font-weight:700">{f"{_sel_ret:+.2f}%" if not pd.isna(_sel_ret) else "—"}</span><br>
-  <span style="color:#94a3b8;font-size:0.88em">레짐: {_rg_emoji} {_rg_sel} &nbsp;·&nbsp; VIX: {f"{_vix_sel:.1f}" if not pd.isna(_vix_sel) else "—"} &nbsp;·&nbsp; k_today: {f"{_k_sel:.3f}" if not pd.isna(_k_sel) else "—"} &nbsp;·&nbsp; 엔진: {_act_sel}</span>
+  <span style="color:#9AA5B8;font-size:0.88em">레짐: {_rg_emoji} {_rg_sel} &nbsp;·&nbsp; VIX: {f"{_vix_sel:.1f}" if not pd.isna(_vix_sel) else "—"} &nbsp;·&nbsp; k_today: {f"{_k_sel:.3f}" if not pd.isna(_k_sel) else "—"} &nbsp;·&nbsp; 엔진: {_act_sel}</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -2224,9 +2235,9 @@ elif page == "📔 매매일지":
             "수익률": _ret_win.reindex(_eq_win.index).values,
         })
         _vline_src = pd.DataFrame({"날짜": [_sel_ts]})
-        _vline = _alt_dd.Chart(_vline_src).mark_rule(color="#fbbf24", strokeWidth=2, strokeDash=[6, 3]).encode(x="날짜:T")
+        _vline = _alt_dd.Chart(_vline_src).mark_rule(color="#EBCB8B", strokeWidth=2, strokeDash=[6, 3]).encode(x="날짜:T")
 
-        _eq_line = _alt_dd.Chart(_eq_df).mark_line(color="#3b82f6", strokeWidth=2).encode(
+        _eq_line = _alt_dd.Chart(_eq_df).mark_line(color="#34A5C5", strokeWidth=2).encode(
             x=_alt_dd.X("날짜:T", title=None, axis=_alt_dd.Axis(labels=False)),
             y=_alt_dd.Y("자산:Q", title="V1 자산 ($)", scale=_alt_dd.Scale(zero=False),
                         axis=_alt_dd.Axis(format="$,.0f")),
@@ -2244,7 +2255,7 @@ elif page == "📔 매매일지":
 
         # ── VIX 패널 ──
         _vix_src = _win.reset_index()[["date", "VIX"]].rename(columns={"date": "날짜"}).dropna(subset=["VIX"])
-        _vix_panel = (_alt_dd.Chart(_vix_src).mark_line(color="#f97316", strokeWidth=1.5).encode(
+        _vix_panel = (_alt_dd.Chart(_vix_src).mark_line(color="#D08770", strokeWidth=1.5).encode(
             x=_alt_dd.X("날짜:T", title=None, axis=_alt_dd.Axis(labels=False)),
             y=_alt_dd.Y("VIX:Q", title="VIX", scale=_alt_dd.Scale(zero=False)),
             tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"), _alt_dd.Tooltip("VIX:Q", format=".1f")],
@@ -2252,7 +2263,7 @@ elif page == "📔 매매일지":
 
         # ── k_today 패널 ──
         _k_src = _win.reset_index()[["date", "k_today"]].rename(columns={"date": "날짜"}).dropna(subset=["k_today"])
-        _k_panel = (_alt_dd.Chart(_k_src).mark_line(color="#a78bfa", strokeWidth=1.5).encode(
+        _k_panel = (_alt_dd.Chart(_k_src).mark_line(color="#B48EAD", strokeWidth=1.5).encode(
             x=_alt_dd.X("날짜:T", title="날짜"),
             y=_alt_dd.Y("k_today:Q", title="k_today", scale=_alt_dd.Scale(zero=False)),
             tooltip=[_alt_dd.Tooltip("날짜:T", format="%Y-%m-%d"), _alt_dd.Tooltip("k_today:Q", format=".3f")],
@@ -2334,7 +2345,7 @@ elif page == "📔 매매일지":
                 ]
                 # 캔들스틱: 위크(저가-고가) + 바디(시가-종가), 양봉=초록·음봉=빨강
                 _oc_color = _alt_dd.condition(
-                    "datum.종가 >= datum.시가", _alt_dd.value("#22c55e"), _alt_dd.value("#ef4444"))
+                    "datum.종가 >= datum.시가", _alt_dd.value("#A3BE8C"), _alt_dd.value("#BF616A"))
                 # 거래일 수에 맞춰 캔들·hover 폭 적응 (적을수록 굵게)
                 _n_cdl = max(len(_soxl_df), 1)
                 _body_px = max(7, min(30, int(660 / _n_cdl * 0.42)))
@@ -2358,13 +2369,13 @@ elif page == "📔 매매일지":
                     _sel_close = float(_sel_soxl_row["종가"].iloc[0])
                     _sel_soxl_row["종가라벨"] = _sel_soxl_row["종가"].apply(lambda v: f"${v:,.2f}")
                     _soxl_vrule = _alt_dd.Chart(_sel_soxl_row).mark_rule(
-                        color="#fbbf24", strokeWidth=1.5, strokeDash=[5, 3], opacity=0.7
+                        color="#EBCB8B", strokeWidth=1.5, strokeDash=[5, 3], opacity=0.7
                     ).encode(x=_x_enc)
                     _soxl_sel_dot = _alt_dd.Chart(_sel_soxl_row).mark_point(
-                        size=240, color="#fbbf24", filled=False, strokeWidth=3
+                        size=240, color="#EBCB8B", filled=False, strokeWidth=3
                     ).encode(x=_x_enc, y=_y_enc, tooltip=_soxl_tip)
                     _soxl_sel_lbl = _alt_dd.Chart(_sel_soxl_row).mark_text(
-                        dy=-16, color="#fbbf24", fontWeight="bold", fontSize=12
+                        dy=-16, color="#EBCB8B", fontWeight="bold", fontSize=12
                     ).encode(x=_x_enc, y=_y_enc, text="종가라벨:N")
                 else:
                     _sel_close = None
@@ -2474,7 +2485,7 @@ elif page == "📔 매매일지":
                     _strip_layers = []
                     if not _sel_soxl_row.empty:
                         _strip_layers.append(_alt_dd.Chart(_sel_soxl_row).mark_rule(
-                            color="#fbbf24", strokeWidth=1.5, strokeDash=[5, 3], opacity=0.7
+                            color="#EBCB8B", strokeWidth=1.5, strokeDash=[5, 3], opacity=0.7
                         ).encode(x=_x_enc_lbl))
                     _strip_layers.append(_alt_dd.Chart(_strip_df).mark_point(
                         size=220, filled=True, stroke="white", strokeWidth=0.8
@@ -2483,7 +2494,7 @@ elif page == "📔 매매일지":
                         shape=_alt_dd.Shape("구분:N", scale=_alt_dd.Scale(
                             domain=_LANES, range=["triangle-up", "triangle-down"]), legend=None),
                         color=_alt_dd.Color("구분:N", scale=_alt_dd.Scale(
-                            domain=_LANES, range=["#22c55e", "#ef4444"]), legend=None),
+                            domain=_LANES, range=["#A3BE8C", "#BF616A"]), legend=None),
                         tooltip=[
                             _alt_dd.Tooltip("날짜_str:N", title="날짜"),
                             _alt_dd.Tooltip("구분:N", title="구분"),
@@ -2492,7 +2503,7 @@ elif page == "📔 매매일지":
                         ],
                     ))
                     _strip_layers.append(_alt_dd.Chart(_strip_df).mark_text(
-                        dy=-13, color="#e5e7eb", fontSize=10, fontWeight="bold"
+                        dy=-13, color="#E5E9F0", fontSize=10, fontWeight="bold"
                     ).encode(x=_x_enc_lbl, y=_strip_y, text="라벨:N"))
                     _strip_panel = _alt_dd.layer(*_strip_layers).properties(height=88)
                     _final_chart = _alt_dd.vconcat(_price_panel, _strip_panel).resolve_scale(x="shared")
@@ -2662,8 +2673,8 @@ elif page == "🔍 데이터 정확성":
 
     # ── 한 줄 결론 배너 ──
     st.markdown("""
-<div style="background:#0f172a;border-left:4px solid #22c55e;padding:16px 22px;border-radius:8px;margin-bottom:18px;color:#e2e8f0;line-height:1.85">
-<b style="color:#4ade80">✅ 한 줄 결론</b><br>
+<div style="background:#3B4252;border-left:4px solid #A3BE8C;padding:16px 22px;border-radius:8px;margin-bottom:18px;color:#D8DEE9;line-height:1.85">
+<b style="color:#A3BE8C">✅ 한 줄 결론</b><br>
 V1 백테가 쓰는 가격 데이터는 <b>완전히 독립된 3개 소스</b> — yfinance(캐논)·Stooq(독립 벤더)·<b>IBKR(실제 브로커)</b> —
 에서 <b>16년치 일일 수익률 쌍별 상관 ≥ 0.9977</b>, 사건일 변동률은 <b>3bp 이내</b>로 일치합니다.
 VIX 핵심 값은 공개기록(역대최고 82.69)과 <b>정확히 0.00 차이</b>.
@@ -2697,7 +2708,7 @@ VIX 핵심 값은 공개기록(역대최고 82.69)과 <b>정확히 0.00 차이</
     # ── 2. 상관 행렬 + 수익률 비교 이유 ──
     st.markdown("### 2️⃣ 일일수익률 상관 행렬 (3종 교차)")
     st.markdown("""
-<div style="background:#1e293b;padding:12px 16px;border-radius:8px;margin-bottom:12px;color:#cbd5e1;font-size:0.92em;line-height:1.7">
+<div style="background:#434C5E;padding:12px 16px;border-radius:8px;margin-bottom:12px;color:#E5E9F0;font-size:0.92em;line-height:1.7">
 💡 <b>왜 절대가가 아닌 '수익률'로 비교하나?</b><br>
 yfinance Close는 분할만 조정(배당 미반영), Stooq는 분할+배당 조정 → <b>절대 가격은 누적배당만큼 배수 차이</b>가 납니다.
 하지만 <b>일일 수익률</b>은 조정 기준과 무관하게 불변이라, 두 소스가 같은 원본인지 가리는 가장 공정한 잣대입니다. (1bp = 0.01%)
@@ -2729,8 +2740,8 @@ yfinance Close는 분할만 조정(배당 미반영), Stooq는 분할+배당 조
     # ── 3. IBKR 연도별 수렴 (핵심 정직 포인트) ──
     st.markdown("### 3️⃣ IBKR 평균차 17.7bp의 정직한 해명 — 연도별 수렴")
     st.markdown("""
-<div style="background:#0f172a;border-left:4px solid #f59e0b;padding:14px 20px;border-radius:8px;margin-bottom:14px;color:#e2e8f0;line-height:1.8">
-<b style="color:#fbbf24">★ 핵심</b> — IBKR(브로커)의 평균차가 Stooq(0.85bp)보다 큰데, 연도별로 쪼개면
+<div style="background:#3B4252;border-left:4px solid #D08770;padding:14px 20px;border-radius:8px;margin-bottom:14px;color:#D8DEE9;line-height:1.8">
+<b style="color:#EBCB8B">★ 핵심</b> — IBKR(브로커)의 평균차가 Stooq(0.85bp)보다 큰데, 연도별로 쪼개면
 <b>SOXL 초기 저유동성 시절에만 몰려 있고 실거래 시대에는 0으로 수렴</b>합니다.
 원인은 브로커 <b>RTH 마지막 체결가</b> vs yfinance <b>공식 통합 종가</b>의 정의 차이 — 오류가 아니라 종가 정의의 미세 노이즈입니다.
 </div>
@@ -2751,7 +2762,7 @@ yfinance Close는 분할만 조정(배당 미반영), Stooq는 분할+배당 조
         y=_altd.Y("mean_bp:Q", title="IBKR vs yfinance 평균 수익률차 (bp)"),
         color=_altd.Color("구간:N", scale=_altd.Scale(
             domain=["2010~2013 저유동성", "2014~2020 성숙기", "2021+ 실거래 시대"],
-            range=["#ef4444", "#f59e0b", "#22c55e"]), legend=_altd.Legend(title="시기", orient="top")),
+            range=["#BF616A", "#D08770", "#A3BE8C"]), legend=_altd.Legend(title="시기", orient="top")),
         tooltip=[_altd.Tooltip("year:O", title="연도"), _altd.Tooltip("mean_bp:Q", title="평균차(bp)", format=".1f"),
                  _altd.Tooltip("구간:N", title="구간")],
     ).properties(height=300)
@@ -2816,11 +2827,11 @@ yfinance Close는 분할만 조정(배당 미반영), Stooq는 분할+배당 조
     # ── 7. 한계 & 정직한 단서 ──
     st.markdown("### 7️⃣ 한계 & 정직한 단서")
     st.markdown("""
-<div style="background:#1e293b;padding:14px 18px;border-radius:8px;color:#cbd5e1;line-height:1.85">
+<div style="background:#434C5E;padding:14px 18px;border-radius:8px;color:#E5E9F0;line-height:1.85">
 • <b>스코프</b>: 입력 가격 데이터 정확성만 검증. 전략 수익률 주장은 별도 검증 문서 참조.<br>
 • <b>3종 모두 독립</b>: yfinance·Stooq(데이터 벤더) + IBKR(브로커 피드). Bloomberg급 틱 감사는 아니나
   성격이 다른 독립 소스 3종 + 공개기록 삼각검증 → 리테일 백테 신뢰성 기준 충족.<br>
-• <b style="color:#4ade80">보수성</b>: 백테는 분할조정 Close 사용(배당 미반영) → 16년 누적 총수익 대비 약 <b>7~8% 과소</b>평가.
+• <b style="color:#A3BE8C">보수성</b>: 백테는 분할조정 Close 사용(배당 미반영) → 16년 누적 총수익 대비 약 <b>7~8% 과소</b>평가.
   데이터 선택이 결과를 부풀리는 게 아니라 <b>깎는</b> 방향.
 </div>
 """, unsafe_allow_html=True)
@@ -2835,10 +2846,10 @@ elif page == "📖 용어 사전":
     st.caption("이 대시보드에 등장하는 용어들을 카테고리별로 정리했습니다.")
 
     def _glossary_card(term, definition, example=None):
-        ex_html = f"<div style='color:#94a3b8;font-size:0.88em;margin-top:4px'>예시: {example}</div>" if example else ""
+        ex_html = f"<div style='color:#9AA5B8;font-size:0.88em;margin-top:4px'>예시: {example}</div>" if example else ""
         st.markdown(f"""
-<div style="background:#0f172a;border-left:3px solid #3b82f6;padding:10px 14px;border-radius:6px;margin-bottom:8px;color:#e2e8f0">
-  <span style="color:#60a5fa;font-weight:700">{term}</span><br>
+<div style="background:#3B4252;border-left:3px solid #34A5C5;padding:10px 14px;border-radius:6px;margin-bottom:8px;color:#D8DEE9">
+  <span style="color:#88C0D0;font-weight:700">{term}</span><br>
   <span style="line-height:1.6">{definition}</span>
   {ex_html}
 </div>

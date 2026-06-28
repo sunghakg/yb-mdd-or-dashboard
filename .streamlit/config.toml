@@ -1,9 +1,10 @@
 [theme]
+# DS(Dual Sniper) 매칭 — Nord 다크 팔레트
 base = "dark"
-primaryColor = "#f1c40f"
-backgroundColor = "#1a2540"
-secondaryBackgroundColor = "#2c3e50"
-textColor = "#ecf0f1"
+primaryColor = "#34A5C5"
+backgroundColor = "#2E3440"
+secondaryBackgroundColor = "#3B4252"
+textColor = "#D8DEE9"
 font = "sans serif"
 
 [server]
