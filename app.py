@@ -1553,7 +1553,7 @@ def _render_v2_tab():
         st.markdown("""
 - **M9 DSR 37-trials 미통과** — VVIX C 그리드 + RS lookback 그리드 등 시도 횟수가 늘면 Deflated Sharpe Ratio 통과 못 함. M3 shuffle z=3.09 p=0.000이 진위의 1차 증거.
 - **2021 melt-up −26pp** — VIX/VVIX 모두 진정 상태에서 NDX/SPY throttle이 false positive 발동하면 풀로딩 못 함. 강세장 일부 upside 놓침.
-- **A4 VVIX baseline drift** — VVIX Q1→Q3 평균 88→108로 13년간 상승. 임계값 90이 시간에 따라 다른 의미. 향후 rolling-baseline 검토 필요.
+- **A4 VVIX 기준선 드리프트** — VVIX Q1→Q3 평균 88→108로 13년간 상승. 임계값 90이 시간에 따라 다른 의미. 향후 롤링 기준선 검토 필요.
 - **In-sample 16년 동일 기간 fit** — V1, V2 모두 SOXL 상장 이후 전체 기간 학습. 진짜 OOS 아님 (S1d는 walkforward Q3/Q4 alpha decay 있었음 → V2가 그걸 해결한 증거가 in-sample 한정).
 - **운영 자본 cap** — 헤드라인은 무한 자본 가정. SOXL 2010-2016 ADV $7-30M 시기 슬립 반영 시 V1 16년 CAGR 78%→34% 환상으로 메모리 [[project-bube-reality-followups-2026-05-27]] 기록. V2도 동일 슬립 영향 받음.
 """)
