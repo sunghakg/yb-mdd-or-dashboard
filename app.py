@@ -734,6 +734,78 @@ elif page == "📅 연도별 성과":
         yc4.metric("평균 Δ Ret / Δ MDD",
                    f"{avg_ret:+.2f}pp / {avg_mdd:+.2f}pp")
 
+        # ── 연도별 CHAMP 수익률 (막대 클릭 → 그 해 월별 막대차트) ──────────
+        st.markdown("---")
+        st.markdown("### 📊 연도별 CHAMP 수익률 — 막대를 클릭하면 그 해 월별 성과가 아래에 표시됩니다")
+        import altair as _alt5
+        _y5_df = pd.DataFrame({
+            "yr":  y["year"].astype(int).values,
+            "ret": y["CHAMP_ret_%"].values,
+            "mdd": y["CHAMP_mdd_%"].values,
+        })
+        _y5sel = _alt5.selection_point(fields=["yr"], name="y5sel")
+        _y5_chart = (
+            _alt5.Chart(_y5_df).mark_bar().encode(
+                x=_alt5.X("yr:O", title="연도"),
+                y=_alt5.Y("ret:Q", title="CHAMP 연 수익률 (%)"),
+                color=_alt5.condition("datum.ret >= 0",
+                                      _alt5.value("#A3BE8C"), _alt5.value("#BF616A")),
+                opacity=_alt5.condition(_y5sel, _alt5.value(1.0), _alt5.value(0.55)),
+                tooltip=[_alt5.Tooltip("yr:O", title="연도"),
+                         _alt5.Tooltip("ret:Q", title="수익률(%)", format="+.2f"),
+                         _alt5.Tooltip("mdd:Q", title="연중 MDD(%)", format=".2f")],
+            ).add_params(_y5sel).properties(height=300)
+        )
+        _y5_event = st.altair_chart(_y5_chart, use_container_width=True,
+                                    on_select="rerun", key="j5_year_sel")
+
+        # 선택 연도 추출 (클릭 없으면 최근 연도 기본 표시)
+        _y5_years = [int(v) for v in _y5_df["yr"].values]
+        _y5_sel_year = _y5_years[-1] if _y5_years else None
+        try:
+            _y5_pick = _y5_event["selection"]["y5sel"]
+            if _y5_pick:
+                _y5_sel_year = int(_y5_pick[0]["yr"])
+        except Exception:
+            pass
+
+        # 월별 수익률 (월말 종가 기준, 1월은 전년 말 대비)
+        _eq5 = pd.read_csv(CHAMP / "equity_curves.csv", parse_dates=["date"], index_col="date")
+        _eq5s = (_eq5["CHAMP_NOMARGIN"].dropna()
+                 if "CHAMP_NOMARGIN" in _eq5.columns else pd.Series(dtype=float))
+        _m5 = _eq5s.resample("ME").last().pct_change() * 100
+        _m5y = _m5[_m5.index.year == _y5_sel_year].dropna()
+        _m5_df = pd.DataFrame({"m": [int(d.month) for d in _m5y.index], "ret": _m5y.values})
+        _m5_df["mlabel"] = _m5_df["m"].map(lambda x: f"{x}월")
+        _m5_order = [f"{m}월" for m in range(1, 13)]
+
+        st.markdown(f"#### 📊 {_y5_sel_year}년 월별 성과")
+        if len(_m5_df):
+            st.altair_chart(
+                _alt5.Chart(_m5_df).mark_bar().encode(
+                    x=_alt5.X("mlabel:N", sort=_m5_order, title="월"),
+                    y=_alt5.Y("ret:Q", title="월 수익률 (%)"),
+                    color=_alt5.condition("datum.ret >= 0",
+                                          _alt5.value("#A3BE8C"), _alt5.value("#BF616A")),
+                    tooltip=[_alt5.Tooltip("mlabel:N", title="월"),
+                             _alt5.Tooltip("ret:Q", title="수익률(%)", format="+.2f")],
+                ).properties(height=280),
+                use_container_width=True,
+            )
+            _r5 = _y5_df[_y5_df["yr"] == _y5_sel_year]
+            if len(_r5):
+                _b5 = _m5_df.loc[_m5_df["ret"].idxmax()]
+                _w5 = _m5_df.loc[_m5_df["ret"].idxmin()]
+                st.caption(
+                    f"{_y5_sel_year}년 — 연수익률 **{_r5['ret'].iloc[0]:+.2f}%** · "
+                    f"연중 MDD {_r5['mdd'].iloc[0]:.2f}% · "
+                    f"최고 {_b5['mlabel']} {_b5['ret']:+.1f}% · "
+                    f"최저 {_w5['mlabel']} {_w5['ret']:+.1f}% · "
+                    f"플러스 {int((_m5_df['ret'] > 0).sum())}/{len(_m5_df)}개월")
+        else:
+            st.info(f"{_y5_sel_year}년 월별 데이터가 없습니다.")
+        st.markdown("---")
+
         # Yearly equity chart
         st.markdown("### 📈 연말 자본 ($100K 시드 기준) — 🏆 CHAMP 강조")
         import altair as _alt
