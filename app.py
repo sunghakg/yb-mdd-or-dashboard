@@ -1,5 +1,5 @@
 """
-BUBE V1 CHAMP_NOMARGIN — Streamlit 대시보드
+BUBE V1 CHAMP_NOMARGIN — Streamlit 대시보드  (redeploy nudge: 2026-06-27)
 ===============================================================
 BASE BUBE × VIX dynamic-k overlay (k=0.60 × clip(20/VIX, 0.5, 2.0), alloc≤1.0).
 margin 사용 X = 합법적 cash sleeve 운영.
