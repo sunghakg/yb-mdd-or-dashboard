@@ -1,19 +1,19 @@
 """
 BUBE V1 CHAMP_NOMARGIN — Streamlit 대시보드  (redeploy nudge: 2026-06-27)
 ===============================================================
-BASE BUBE × VIX dynamic-k overlay (k=0.60 × clip(20/VIX, 0.5, 2.0), alloc≤1.0).
+엔진 로테이션 × VIX dynamic-k overlay (k=0.60 × clip(20/VIX, 0.5, 2.0), alloc≤1.0).
 margin 사용 X = 합법적 cash sleeve 운영.
 
-16y in-sample (2010-05-25 ~ 2026-06-17, k baseline 0.60 since 2026-06-07):
-  Cal 2.75 / CAGR +77.2% / MDD -28.13% / $100K → $926M (×10 vs BASE $90.7M)
+16y in-sample (2010-05-25 ~ 2026-06-17, k 기준 0.60 since 2026-06-07):
+  Cal 2.75 / CAGR +77.2% / MDD -28.13% / $100K → $926M
 Bootstrap 5,000 paths: p50 Cal 2.16 / MDD -34.9% / P(MDD<-30%) = 82.0%
 
 탭 구성:
-1. 📊 Overview — V1 CHAMP_NOMARGIN spec + BASE 대비 알파
+1. 📊 Overview — V1 CHAMP_NOMARGIN spec
    (구 '📋 거래 내역' 탭은 2026-06-21 '📔 매매일지'로 통합 — 시드 환산·필터·CSV 거래 로그 포함)
-3. 📈 Stress Tests — 8개 crisis × BASE vs CHAMP
+3. 📈 Stress Tests — 8개 crisis V1 방어력
 4. 🎲 Bootstrap — 5,000 paths 신뢰구간
-5. 📅 Year-by-Year — 17년 BASE vs CHAMP 연도별
+5. 📅 Year-by-Year — 17년 V1 연도별
 6. 🔄 Multi-window OOS — 1y/2y/3y/4y/5y/8y/10y/15y/16y rolling
 7. 💰 BUBE Live — Alpaca paper 실시간 + regime + active sub-strategy
 8. 🆚 V2_FINAL 비교 — 기본 비활성 (SHOW_V2=False). lookahead 제거 재검증(2026-05-28)에서
@@ -108,7 +108,6 @@ if champ_summary is None:
     st.stop()
 
 H_CHAMP = champ_summary["headline_16y_CHAMP"]
-H_BASE = champ_summary["headline_16y_BASE"]
 H_BOOT = champ_summary["bootstrap_CHAMP"]
 
 # ───────────────────────────────────────────────────────────
@@ -341,8 +340,8 @@ if page == "📊 백테스트":
 # = 엔진 로테이션 × VIX dynamic-k overlay × alloc cap 1.0
 
 # Overlay 수식
-k_today    = base_k × scale_today
-base_k     = 0.60                                    # alloc reduction baseline (2026-06-07 디리스킹 0.65→0.60)
+k_today    = k0 × scale_today
+k0         = 0.60                                    # 기준 비중 (2026-06-07 디리스킹 0.65→0.60)
 scale      = clip(20.0 / VIX_today, 0.5, 2.0)        # VIX 역수 스케일
 alloc_today = min(k_today × strategy_alloc, 1.0)     # margin 금지 (cap 1.0)
 
@@ -574,7 +573,7 @@ elif page == "🎲 확률 분포":
     st.markdown("### 핵심 해석 (운영 기대 범위)")
     st.info(
         f"**진짜 운영 기대치**: bootstrap p50 = CAGR **{b['cagr_p50']:.2f}%** / MDD **{b['mdd_p50']:.2f}%** / Calmar **{b['cal_p50']:.2f}**. "
-        f"단일 16년 path의 Cal 2.75는 약간 운 좋은 실현이며, 실제로는 **2.0 ~ 2.3 박스**가 base case.\n\n"
+        f"단일 16년 path의 Cal 2.75는 약간 운 좋은 실현이며, 실제로는 **2.0 ~ 2.3 박스**가 기본 시나리오.\n\n"
         f"**MDD 꼬리 위험**: P(MDD<-30%) = {b['p_mdd_worse_than_30']:.2f}%, P(MDD<-40%) = {b['p_mdd_worse_than_40']:.2f}% — "
         f"미래 path가 -30% 넘어갈 확률 {b['p_mdd_worse_than_30']:.0f}%, -40% 확률 {b['p_mdd_worse_than_40']:.0f}% 정도. **mentally prepare**."
     )
@@ -874,7 +873,7 @@ elif page == "💰 실시간 현황":
 <div style="background:linear-gradient(135deg,#2E3440,#4C566A);padding:18px 24px;border-radius:10px;color:white;margin:8px 0 16px">
   <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">🏆 V1 CHAMP_NOMARGIN Overlay (운영 중)</div>
   <div style="opacity:0.92;line-height:1.7">
-    <b>k_today</b> = 0.60 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0) &nbsp;<span style="opacity:0.7">(baseline 0.60 — 2026-06-07 디리스킹)</span><br>
+    <b>k_today</b> = 0.60 × clip(20.0 / VIX_today, 0.5, 2.0), <b>alloc_today</b> = min(k × strat_alloc, 1.0) &nbsp;<span style="opacity:0.7">(기준 0.60 — 2026-06-07 디리스킹)</span><br>
     엔진 로테이션: <b>BULL/NEUTRAL</b> 롱변기 · <b>BEAR</b> 양변기 v5 · <b>BEAR streak &gt; 90d</b> 황금변기<br>
     <b>갭필터 A안(비대칭, 2026-06-03)</b>: 롱변기·양변기롱 갭다운만 차단 · 양변기숏 대칭<br>
     <b>Regime</b>: Consensus 3-SMA200 (QQQ/SPY/SMH ±2%, 2-of-3) + Fast BEAR OR (VIX9D/VIX&gt;1.05 OR SOXL 5d mom&lt;-10%), dwell=5d
@@ -993,7 +992,7 @@ elif page == "💰 실시간 현황":
             try:
                 vix_today = float(vix["Close"].iloc[-1])
                 scale = max(0.5, min(2.0, 20.0 / vix_today))
-                k_today = 0.60 * scale   # CHAMP_BASE_K=0.60 (2026-06-07 디리스킹, 봇과 동기)
+                k_today = 0.60 * scale   # k0=0.60 (2026-06-07 디리스킹, 봇과 동기)
                 # alloc cap 1.0 (no margin)
                 # For display: assume strat alloc = 1.0 then alloc_today = min(k_today, 1.0)
                 alloc_max = min(k_today, 1.0)
@@ -1044,7 +1043,7 @@ elif page == "💰 실시간 현황":
                       help="clip(20/VIX, 0.5, 2.0). VIX=10이면 2.0, VIX=20이면 1.0, VIX=40이면 0.5.")
             v3.metric("k_today (비중 승수)", f"{rstate['k_today']:.3f}",
                       f"기준 0.60 대비 {rstate['k_today']/0.60:.1f}×",
-                      help="0.60 × 스케일 (baseline 0.60, 2026-06-07 디리스킹). 이 값이 전략 원래 비중에 곱해짐.")
+                      help="0.60 × 스케일 (기준 0.60, 2026-06-07 디리스킹). 이 값이 전략 원래 비중에 곱해짐.")
             v4.metric("최대 투자 비중", f"{rstate['alloc_max']*100:.0f}%",
                       "Margin 미사용 (100% 상한)",
                       help="k_today × 전략 비중. Margin 사용 안 하므로 100% 초과 불가.")
@@ -1171,7 +1170,7 @@ elif page == "💰 실시간 현황":
         _fix_events = [
             ("2026-05-26", "🚀 V1 CHAMP_NOMARGIN 전환", "T2 GOLD_ESCAPE(bm=90) → V1 CHAMP (엔진 로테이션 × VIX 동적-k, cap 1.0)"),
             ("2026-06-03", "🔧 비대칭 갭필터 (A안)", "롱변기·양변기롱 SOXL 매수는 갭다운(−5%↓)만 차단·갭업 허용, 양변기숏 대칭 유지"),
-            ("2026-06-07", "📉 k 디리스킹 0.65→0.60", "CHAMP_BASE_K 0.65→0.60 (봇·백테 동기). 저VIX 노출 0.90→0.83, 16y MDD 개선, Calmar 정점 유지"),
+            ("2026-06-07", "📉 k 디리스킹 0.65→0.60", "기준 k(k0) 0.65→0.60 (봇·백테 동기). 저VIX 노출 0.90→0.83, 16y MDD 개선, Calmar 정점 유지"),
             ("2026-06-11", "🔧 롱변기 stop-buy 거부 수리", "강갭업 시 buy-stop이 현재가 아래로 떨어져 Alpaca 거부 → marketable-limit 추격 (PR#12)"),
             ("2026-06-19", "🌡 VIX9D fast-BEAR + 매일 갱신", "regime에 VIX9D/VIX>1.05 즉시 BEAR. V1 CHAMP 백테 평일 매일 자동 갱신 (PR#13)"),
         ]
