@@ -105,9 +105,14 @@ st.markdown("""
 # Alpaca credentials from Streamlit secrets (cloud) or env (local)
 import os as _os
 try:
+    # paper 키
     if "ALPACA_API_KEY" in st.secrets:
         _os.environ["ALPACA_API_KEY"] = st.secrets["ALPACA_API_KEY"]
         _os.environ["ALPACA_SECRET_KEY"] = st.secrets["ALPACA_SECRET_KEY"]
+    # live(실거래) 키 — 별도 등록
+    if "ALPACA_LIVE_API_KEY" in st.secrets:
+        _os.environ["ALPACA_LIVE_API_KEY"] = st.secrets["ALPACA_LIVE_API_KEY"]
+        _os.environ["ALPACA_LIVE_SECRET_KEY"] = st.secrets["ALPACA_LIVE_SECRET_KEY"]
 except Exception:
     pass
 
@@ -321,13 +326,13 @@ with st.sidebar:
 </div>
 """, unsafe_allow_html=True)
     _pages = [
+        "💰 실시간 현황",
         "📊 백테스트",
         "📔 매매일지",
         "📈 위기 방어력",
         "🎲 확률 분포",
         "📅 연도별 성과",
         "🔄 기간별 안정성",
-        "💰 실시간 현황",
         "🔬 백테 vs 페이퍼",
         "🔍 데이터 정확성",
         "📖 용어 사전",
@@ -912,8 +917,8 @@ elif page == "🔄 기간별 안정성":
 # TAB 7: BUBE Live (Alpaca paper)
 # ───────────────────────────────────────────────────────────
 elif page == "💰 실시간 현황":
-    st.subheader("💰 실시간 현황 — Alpaca 페이퍼 계정")
-    st.caption("봇이 오늘 어떤 레짐으로 판정하고, 비중을 어떻게 조절했는지 실시간으로 확인.")
+    st.subheader("💰 실시간 현황 — 백테 · 페이퍼 · 라이브(실거래)")
+    st.caption("백테(시뮬) 대비 Alpaca 페이퍼·라이브 실거래 계정을 한눈에. 봇의 오늘 레짐·비중·체결도 실시간 확인.")
     st.info("ℹ️ **현재 운영 중: V1 + 비대칭 갭필터 (2026-06-03~)** "
             "— 롱변기·양변기 SOXL 매수는 갭다운(-5% 이상)만 차단, 갭업은 허용. 양변기 SOXS 매도는 대칭 차단 유지.")
 
@@ -933,26 +938,19 @@ elif page == "💰 실시간 현황":
 </div>
 """, unsafe_allow_html=True)
 
-    # ── Lazy-load gate (성능 최적화: Tab 7 진입 시에만 yfinance+Alpaca 호출) ──
-    if "live_loaded" not in st.session_state:
-        st.session_state["live_loaded"] = False
-
-    lazy_col1, lazy_col2 = st.columns([2, 1])
-    with lazy_col1:
-        st.markdown("**Live 데이터** (regime/VIX/Alpaca paper 계정) — 클릭 시 로드")
-    with lazy_col2:
-        if st.button("🔄 Live 로드 / 새로고침", key="load_live_btn", use_container_width=True):
-            st.session_state["live_loaded"] = True
-            # 새로고침 시 캐시도 무효화
+    # ── 자동 로드: 창을 열면 regime/VIX/Alpaca(페이퍼+라이브) 자동 조회 ──
+    _lc1, _lc2 = st.columns([3, 1])
+    with _lc1:
+        st.caption("📡 창을 열면 regime·VIX·Alpaca 페이퍼+라이브 계정을 자동으로 불러옵니다 "
+                   "(regime 30분·계정 5분 캐시). 즉시 갱신하려면 오른쪽 버튼.")
+    with _lc2:
+        if st.button("🔄 지금 새로고침", key="refresh_live_top", use_container_width=True):
             st.cache_data.clear()
+            st.rerun()
 
-    if not st.session_state["live_loaded"]:
-        st.info(
-            "ℹ️ **빠른 로딩을 위해 Live 데이터는 클릭 시에만 로드됩니다.** "
-            "regime 계산 (yfinance 5종목 × 600일) + Alpaca paper 계정 조회는 위 버튼을 누르면 시작됩니다. "
-            "백테 데이터 (백테스트·거래내역·위기방어력 등 메뉴)는 이 버튼과 무관 — 이미 표시됨."
-        )
-        st.stop()
+    # 최상단 3계좌 요약 자리(아래에서 데이터 받은 뒤 이 자리에 렌더)
+    _top_summary = st.container()
+    _top_summary.markdown("### 🧮 3계좌 요약 — 🧪 백테 · 📝 페이퍼 · 💰 라이브(실거래)")
 
     # ── Section B: Today's regime + active sub-strategy + k_today ──
     @st.cache_data(ttl=1800)  # 30분 캐시 (regime은 하루 단위로 변함)
@@ -1102,19 +1100,25 @@ elif page == "💰 실시간 현황":
 
     st.markdown("---")
 
-    # ── Section C: Alpaca paper account live ──
+    # ── Section C: Alpaca account live (paper / live 파라미터화) ──
     @st.cache_data(ttl=300)  # 5분 캐시 (Alpaca 호출 줄임)
-    def _fetch_alpaca():
+    def _fetch_alpaca(paper=True):
         try:
             from alpaca.trading.client import TradingClient
             from alpaca.trading.requests import GetOrdersRequest
             from alpaca.trading.enums import QueryOrderStatus
             import datetime as _dt
-            key = _os.environ.get("ALPACA_API_KEY")
-            secret = _os.environ.get("ALPACA_SECRET_KEY")
-            if not key or not secret:
-                return {"error": "Streamlit Cloud Secrets에 ALPACA_API_KEY / ALPACA_SECRET_KEY 등록이 필요합니다."}
-            tc = TradingClient(api_key=key, secret_key=secret, paper=True)
+            if paper:
+                key = _os.environ.get("ALPACA_API_KEY")
+                secret = _os.environ.get("ALPACA_SECRET_KEY")
+                if not key or not secret:
+                    return {"error": "ALPACA_API_KEY / ALPACA_SECRET_KEY 미설정 (Streamlit Secrets)"}
+            else:
+                key = _os.environ.get("ALPACA_LIVE_API_KEY")
+                secret = _os.environ.get("ALPACA_LIVE_SECRET_KEY")
+                if not key or not secret:
+                    return {"error": "라이브 키 미설정 — Secrets에 ALPACA_LIVE_API_KEY / ALPACA_LIVE_SECRET_KEY 등록 필요"}
+            tc = TradingClient(api_key=key, secret_key=secret, paper=paper)
             account = tc.get_account()
             positions = tc.get_all_positions()
             today_utc = _dt.datetime.now(_dt.timezone.utc).replace(
@@ -1131,6 +1135,7 @@ elif page == "💰 실시간 현황":
             return {
                 "account": {
                     "equity": float(account.equity),
+                    "last_equity": float(account.last_equity) if account.last_equity else float(account.equity),
                     "cash": float(account.cash),
                     "buying_power": float(account.buying_power),
                     "portfolio_value": float(account.portfolio_value),
@@ -1162,11 +1167,43 @@ elif page == "💰 실시간 현황":
         except Exception as e:
             return {"error": str(e)}
 
+    data = _fetch_alpaca(paper=True)
+    data_live = _fetch_alpaca(paper=False)
+
+    # ── 최상단 3계좌 요약 렌더 (백테 · 페이퍼 · 라이브) ──
+    _bt_final = H_CHAMP["Final_mult"] * 100_000
+    _bt_ret = (H_CHAMP["Final_mult"] - 1) * 100
+    with _top_summary:
+        _ac1, _ac2, _ac3 = st.columns(3)
+        with _ac1:
+            st.markdown("**🧪 백테 (시뮬 · $100K)**")
+            st.metric("최종 자산 (16년)", _money(_bt_final), f"{_bt_ret:+,.0f}% 누적")
+            st.caption("in-sample 백테스트 기준 (참고용)")
+        with _ac2:
+            st.markdown("**📝 페이퍼 (Alpaca)**")
+            if "error" in data:
+                st.caption(f"⚠ {data['error']}")
+            else:
+                _pa = data["account"]; _pchg = _pa["equity"] - _pa["last_equity"]
+                _ppct = (_pchg / _pa["last_equity"] * 100) if _pa["last_equity"] else 0.0
+                st.metric("총 자산", f"${_pa['equity']:,.0f}", f"{_pchg:+,.0f} ({_ppct:+.2f}%) 오늘")
+                st.caption(f"현금 ${_pa['cash']:,.0f} · {_pa['status']}")
+        with _ac3:
+            st.markdown("**💰 라이브 (실거래)**")
+            if "error" in data_live:
+                st.caption(f"⚠ {data_live['error']}")
+            else:
+                _li = data_live["account"]; _lchg = _li["equity"] - _li["last_equity"]
+                _lpct = (_lchg / _li["last_equity"] * 100) if _li["last_equity"] else 0.0
+                st.metric("총 자산", f"${_li['equity']:,.0f}", f"{_lchg:+,.0f} ({_lpct:+.2f}%) 오늘")
+                st.caption(f"현금 ${_li['cash']:,.0f} · {_li['status']}")
+        st.markdown("---")
+
+    st.markdown("### 💼 페이퍼 계정 상세")
     if st.button("🔄 새로고침", key="refresh_alpaca"):
         st.cache_data.clear()
         st.rerun()
 
-    data = _fetch_alpaca()
     if "error" in data:
         st.error(f"Alpaca 연결 실패: {data['error']}")
         st.caption("Streamlit Cloud → ⚙ Settings → Secrets에 다음 2줄 등록:")
@@ -1208,7 +1245,41 @@ elif page == "💰 실시간 현황":
         else:
             st.info("오늘 주문 없음")
 
-        # ── 최근 30일 매매·수정 타임라인 ──────────────────────────
+        # ── 라이브(실거래) 계정 상세 ──────────────────────────────
+        st.markdown("---")
+        st.markdown("### 💰 라이브(실거래) 계정 상세")
+        if "error" in data_live:
+            st.info(f"라이브 계정 미연결 — {data_live['error']}")
+            st.caption("Streamlit Cloud → Settings → Secrets에 라이브 키 2줄 추가:")
+            st.code('ALPACA_LIVE_API_KEY = "<BUBE live API key>"\n'
+                    'ALPACA_LIVE_SECRET_KEY = "<BUBE live secret>"', language="toml")
+        else:
+            _lacc = data_live["account"]
+            _l1, _l2, _l3, _l4 = st.columns(4)
+            _l1.metric("총 자산 (Equity)", f"${_lacc['equity']:,.2f}",
+                       f"{_lacc['equity']-_lacc['last_equity']:+,.2f} 오늘")
+            _l2.metric("현금", f"${_lacc['cash']:,.2f}")
+            _l3.metric("매수 가능 금액", f"${_lacc['buying_power']:,.2f}")
+            _l4.metric("계정 상태", _lacc["status"])
+            st.markdown("**현재 보유 포지션 (라이브)**")
+            if data_live["positions"]:
+                _lpos = pd.DataFrame(data_live["positions"])
+                _lpos["avg_entry"] = _lpos["avg_entry"].apply(lambda x: f"${x:.2f}")
+                _lpos["current"] = _lpos["current"].apply(lambda x: f"${x:.2f}")
+                _lpos["market_value"] = _lpos["market_value"].apply(lambda x: f"${x:,.2f}")
+                _lpos["unrealized_pnl"] = _lpos["unrealized_pnl"].apply(lambda x: f"${x:+,.2f}")
+                _lpos["unrealized_pct"] = _lpos["unrealized_pct"].apply(lambda x: f"{x:+.2f}%")
+                st.dataframe(_lpos, use_container_width=True, hide_index=True)
+            else:
+                st.info("라이브 보유 포지션 없음")
+            st.markdown("**라이브 오늘 주문**")
+            if data_live["orders_today"]:
+                st.dataframe(pd.DataFrame(data_live["orders_today"]),
+                             use_container_width=True, hide_index=True)
+            else:
+                st.info("라이브 오늘 주문 없음")
+
+        # ── 최근 30일 매매·수정 타임라인 (페이퍼) ──────────────────
         st.markdown("---")
         st.markdown("### 📋 최근 30일 매매 · 운영 수정 타임라인")
         st.caption("최근 30일 체결을 시간순으로 — 🟢매수 / 🔴매도(평단 대비 실현 수익률%·손익$) · 날짜별 **누적 실현손익** · "
