@@ -236,13 +236,6 @@ st.markdown(f"""
   </thead>
   <tbody>
     <tr style="border-bottom:1px solid #434C5E">
-      <td style="padding:5px 8px;color:#D8DEE9;font-weight:600">16년 (전체)</td>
-      <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r16['Calmar'])};font-weight:700">{_r16['Calmar']:.2f}</td>
-      <td style="padding:5px 12px;text-align:right;color:#88C0D0">{_r16['CAGR']:+.2f}%</td>
-      <td style="padding:5px 12px;text-align:right;color:{_mdd_color(_r16['MDD'])}">{_r16['MDD']:.2f}%</td>
-      <td style="padding:5px 12px;text-align:right;color:#D8DEE9">{_money(_r16['mult']*100_000)}</td>
-    </tr>
-    <tr style="border-bottom:1px solid #434C5E">
       <td style="padding:5px 8px;color:#D8DEE9;font-weight:600">10년 (롤링)</td>
       <td style="padding:5px 12px;text-align:right;color:{_cal_color(_r10['Calmar'])};font-weight:700">{_r10['Calmar']:.2f}</td>
       <td style="padding:5px 12px;text-align:right;color:#88C0D0">{_r10['CAGR']:+.2f}%</td>
@@ -366,14 +359,7 @@ with st.sidebar:
 if page == "📊 백테스트":
     st.subheader("📊 백테스트 — BUBE V1 전략 개요")
 
-    st.markdown("""
-<div style="background:#3B4252;border-left:4px solid #34A5C5;padding:14px 20px;border-radius:8px;margin-bottom:16px;color:#D8DEE9;line-height:1.9">
-<b>전략 핵심 3단계</b><br>
-<b>1️⃣ 레짐 감지</b> — QQQ·SPY·SMH 200일선 + VIX9D/SOXL 모멘텀으로 매일 시장 상태 판정 (BULL / NEUTRAL / BEAR)<br>
-<b>2️⃣ 엔진 전환</b> — BULL·NEUTRAL → <b>롱변기</b>(SOXL 단방향 매수) · BEAR → <b>양변기</b>(SOXL롱+SOXS숏) · BEAR 90일+ → <b>황금변기</b>(변동성 돌파)<br>
-<b>3️⃣ VIX 비중 조절</b> — VIX 높으면(공포) 비중 줄이고, VIX 낮으면(안정) 비중 늘림. Margin 미사용(최대 100%)
-</div>
-""", unsafe_allow_html=True)
+    st.caption("전략 설명은 아래 흐름도 한 장에 모두 담겨 있습니다 · 16년 핵심 지표는 상단 카드 참조.")
 
     # ── 매매법 상세 흐름도 (그림) ───────────────────────────────
     _method_svg = load_svg("v1_method.svg")
@@ -386,10 +372,8 @@ if page == "📊 백테스트":
             st.caption("매일 한 거래 사이클: ① 레짐 판정(전일 데이터) → ② 엔진 선택 → ③ 09:35 돌파 진입 "
                        "→ ④ 비대칭 갭필터 → ⑤ VIX 동적 비중 → ⑥ 엔진별 청산. 3엔진 모두 stop-buy 변동성 돌파 진입.")
 
-    col_a, col_b = st.columns([1, 1])
-    with col_a:
-        with st.expander("📐 기술 스펙 보기 (코드)", expanded=True):
-         st.code(f"""
+    with st.expander("📐 기술 스펙 보기 (코드)", expanded=False):
+        st.code(f"""
 # Strategy: V1 CHAMP_NOMARGIN (no-margin variant)
 # = 엔진 로테이션 × VIX dynamic-k overlay × alloc cap 1.0
 
@@ -423,30 +407,17 @@ dwell      = 5일 (regime 전환 최소 유지)
 max_bear   = 90일 (GOLD_ESCAPE 트리거)
 """, language="python")
 
-    with col_b:
-        st.markdown("### 16년 백테스트 결과 (V1 CHAMP_NOMARGIN)")
-        st.markdown(f"""
-- **CAGR** (연복리): `{H_CHAMP['CAGR']:.2f}%`
-- **MDD** (최대낙폭): `{H_CHAMP['MDD']:.2f}%`
-- **Sharpe** (위험조정 수익): `{H_CHAMP['Sharpe']:.2f}`
-- **Calmar** (수익÷낙폭): `{H_CHAMP['Calmar']:.2f}`
-- **최종 자산** ($10만 시드): `{_money(H_CHAMP['Final_mult']*100_000)}`
-""")
-
-        st.markdown("### 전략 검증 결과")
-        check_data = [
-            ("16y 단일 path", f"Calmar {H_CHAMP['Calmar']:.2f}", "✅"),
-            ("Bootstrap 5,000",
-             f"p50 Cal {H_BOOT['cal_p50']:.2f}, p05 {H_BOOT['cal_p05']:.2f} 이상",
-             "✅"),
-            ("VIX shuffle test", "alpha 소실 → VIX-conditioning이 진짜 시그널 (random X)", "✅"),
-            ("MDD 분포", f"p50 {H_BOOT['mdd_p50']:.2f}%, P(MDD<-30%)={H_BOOT['p_mdd_worse_than_30']:.2f}%", "⚠️"),
-            ("CAGR 양수 확률", f"P(CAGR>0)={H_BOOT['p_cagr_positive']:.2f}%, P(CAGR>30%)={H_BOOT['p_cagr_above_30']:.2f}%", "✅"),
-            ("margin 사용", "alloc_cap 1.0 → 합법 cash sleeve, leverage 0%", "✅"),
-            ("Final $", f"$100K → {_money(H_CHAMP['Final_mult']*100_000)}", "✅"),
-        ]
-        for name, desc, mark in check_data:
-            st.markdown(f"**{mark} {name}** — {desc}")
+    st.markdown("### 전략 검증 결과 (Sharpe {:.2f})".format(H_CHAMP['Sharpe']))
+    check_data = [
+        ("Bootstrap 5,000",
+         f"p50 Cal {H_BOOT['cal_p50']:.2f}, p05 {H_BOOT['cal_p05']:.2f} 이상", "✅"),
+        ("VIX shuffle test", "alpha 소실 → VIX-conditioning이 진짜 시그널 (random X)", "✅"),
+        ("MDD 분포", f"p50 {H_BOOT['mdd_p50']:.2f}%, P(MDD<-30%)={H_BOOT['p_mdd_worse_than_30']:.2f}%", "⚠️"),
+        ("CAGR 양수 확률", f"P(CAGR>0)={H_BOOT['p_cagr_positive']:.2f}%, P(CAGR>30%)={H_BOOT['p_cagr_above_30']:.2f}%", "✅"),
+        ("margin 사용", "alloc_cap 1.0 → 합법 cash sleeve, leverage 0%", "✅"),
+    ]
+    for name, desc, mark in check_data:
+        st.markdown(f"**{mark} {name}** — {desc}")
 
     st.markdown("---")
     with st.expander("⚠️ 약점 및 리스크 공시 (클릭해서 펼치기)", expanded=False):
