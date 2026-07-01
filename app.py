@@ -153,6 +153,56 @@ def _money(v):
 
 
 # ───────────────────────────────────────────────────────────
+# 실시간 현황 탭: 수치 옆 "무슨 뜻인지 + 지금 좋은지/나쁜지" 한 줄 배지
+# ───────────────────────────────────────────────────────────
+def _hbadge(status, text):
+    """status: 'good'|'warn'|'bad'|'info' → 🟢🟡🔴 + 한 줄 해설 인라인 배지."""
+    sty = {"good": ("🟢", "#A3BE8C", "좋음"), "warn": ("🟡", "#EBCB8B", "주의"),
+           "bad": ("🔴", "#BF616A", "나쁨"), "info": ("⚪", "#81A1C1", "참고")}
+    emoji, color, label = sty.get(status, sty["info"])
+    st.markdown(
+        f"<div style='margin:-8px 0 14px;padding:5px 11px;border-left:3px solid {color};"
+        f"background:rgba(255,255,255,0.035);border-radius:5px;font-size:0.85em;"
+        f"color:#E5E9F0;line-height:1.5'>{emoji} <b style='color:{color}'>{label}</b> · {text}</div>",
+        unsafe_allow_html=True)
+
+
+def _regime_verdict(reg):
+    """레짐 → (상태, 해설)."""
+    if reg == "BULL":
+        return "good", "강세장 — 롱변기(SOXL 단방향) 가동 조건. 추세가 우호적입니다."
+    if reg == "NEUTRAL":
+        return "warn", "중립 — 방향성이 약합니다. 돌파 진입만 허용, 신규 진입은 신중히."
+    return "bad", "약세장 — 양변기(롱+숏) 방어 엔진. 하락 방어를 우선합니다."
+
+
+def _vix_verdict(vix):
+    """VIX 수준 → (상태, 해설). 낮을수록 비중 확대, 높을수록 디리스킹."""
+    if vix is None:
+        return "info", "VIX 조회 실패."
+    if vix < 15:
+        return "good", f"VIX {vix:.1f} — 저변동성. 비중 확대(풀로딩) 구간, 시장 안정적."
+    if vix < 20:
+        return "good", f"VIX {vix:.1f} — 기준(20) 이하. 보통~안정, 비중 소폭 확대."
+    if vix < 30:
+        return "warn", f"VIX {vix:.1f} — 기준 초과. 비중 축소(디리스킹) 시작."
+    return "bad", f"VIX {vix:.1f} — 고변동성. 스케일 하한(0.5)까지 비중 축소, 위기 경계."
+
+
+def _pnl_verdict(pct, label="시드"):
+    """수익률(%) → (상태, 해설)."""
+    if pct is None:
+        return "info", "수익률 계산 불가."
+    if pct >= 5:
+        return "good", f"{label} 대비 {pct:+.1f}% — 순항 중."
+    if pct >= -5:
+        return "warn", f"{label} 대비 {pct:+.1f}% — 보합권. 큰 손익 없음."
+    if pct >= -15:
+        return "warn", f"{label} 대비 {pct:+.1f}% — 손실 구간. 드로다운 주시."
+    return "bad", f"{label} 대비 {pct:+.1f}% — 두 자릿수 손실. 방어 국면."
+
+
+# ───────────────────────────────────────────────────────────
 # Headline data load
 # ───────────────────────────────────────────────────────────
 champ_summary = load_json(CHAMP / "summary.json")
@@ -892,6 +942,8 @@ elif page == "💰 실시간 현황":
     st.caption("백테(시뮬) 대비 Alpaca 페이퍼·라이브 실거래 계정을 한눈에. 봇의 오늘 레짐·비중·체결도 실시간 확인.")
     st.info("ℹ️ **현재 운영 중: V1 + 비대칭 갭필터 (2026-06-03~)** "
             "— 롱변기·양변기 SOXL 매수는 갭다운(-5% 이상)만 차단, 갭업은 허용. 양변기 SOXS 매도는 대칭 차단 유지.")
+    st.caption("📖 **읽는 법**: 🟢 좋음 · 🟡 주의 · 🔴 나쁨 — 아래 주요 수치 밑에 "
+               "'무슨 뜻인지 + 지금 좋은지/나쁜지'를 한 줄로 표시합니다. 백테·페이퍼·라이브(실거래)를 나란히 봅니다.")
 
     # ── Section A: Spec card ──
     st.markdown("""
@@ -961,6 +1013,8 @@ elif page == "💰 실시간 현황":
         _lh4.metric("시드 대비", f"{_lret:+.2f}%", f"$5,000 → ${_leq:,.0f}")
         st.caption(f"🔴 실거래 · **EOD 원장 기준** · 최신 {_ldate} · API 키 없이 표시 · 시드 $5,000 "
                    f"(라이브 봇 eod_sync가 매일 갱신)")
+        _lv0 = _pnl_verdict(_lret, "라이브 시드 $5K")
+        _hbadge(_lv0[0], _lv0[1] + (f" 전일대비 {_lchg:+,.2f}." if _lchg is not None else ""))
         if len(_live_led) >= 2:
             import altair as _altl
             st.altair_chart(
@@ -1110,6 +1164,8 @@ elif page == "💰 실시간 현황":
                   help="BEAR 레짐이 연속으로 몇 일 지속됐는지. 90일 넘으면 황금변기로 전환.")
         c4.metric("최근 7일 레짐", rstate["last7"], f"전환 최소 유지: {rstate['dwell']}일",
                   help="B=BEAR, U=BULL, N=NEUTRAL 순서. 가장 오른쪽이 오늘.")
+        _rv0 = _regime_verdict(rstate["regime"])
+        _hbadge(_rv0[0], _rv0[1])
 
         if rstate["vix_today"] is not None:
             v1, v2, v3, v4 = st.columns(4)
@@ -1123,6 +1179,9 @@ elif page == "💰 실시간 현황":
             v4.metric("최대 투자 비중", f"{rstate['alloc_max']*100:.0f}%",
                       "Margin 미사용 (100% 상한)",
                       help="k_today × 전략 비중. Margin 사용 안 하므로 100% 초과 불가.")
+            _vv0 = _vix_verdict(rstate["vix_today"])
+            _hbadge(_vv0[0], _vv0[1] +
+                    f" → k={rstate['k_today']:.2f}, 최대비중 {rstate['alloc_max']*100:.0f}%.")
 
         if rstate["gold_escape"]:
             st.error("🚨 **GOLD_ESCAPE 발동 중** — BEAR streak > 90d. 황금변기 K-vol breakout으로 전환됨.")
@@ -1228,6 +1287,38 @@ elif page == "💰 실시간 현황":
                 st.caption(f"현금 ${float(_lr['cash']):,.0f} · {pd.to_datetime(_lr['date']).date()} EOD")
         st.markdown("---")
 
+    # ── 라이브(실거래) API 실시간 계정 — 라이브 키 연결 시 페이퍼와 동일하게 표시 ──
+    data_live = _fetch_alpaca(paper=False)
+    st.markdown("### 💰 라이브 계정 상세 (API 실시간)")
+    if "error" in data_live:
+        st.caption(f"⚪ 라이브 API 미연결 — {data_live['error']}")
+        st.caption("Secrets에 `ALPACA_LIVE_API_KEY` / `ALPACA_LIVE_SECRET_KEY` 등록 시 페이퍼와 "
+                   "동일하게 실시간 표시됩니다. (현재 라이브 현황은 위쪽 EOD 원장 기준으로 표시 중)")
+    else:
+        _la = data_live["account"]
+        _lpnl = _la["equity"] - LIVE_SEED
+        _lpnl_pct = (_lpnl / LIVE_SEED) * 100 if LIVE_SEED else 0.0
+        _lac1, _lac2, _lac3, _lac4 = st.columns(4)
+        _lac1.metric("총 자산 (Equity)", f"${_la['equity']:,.2f}", f"{_lpnl:+,.2f} ({_lpnl_pct:+.2f}%)",
+                     help=f"시드 ${LIVE_SEED:,.0f} 대비 현재 총 자산 (라이브 API 실시간).")
+        _lac2.metric("현금", f"${_la['cash']:,.2f}")
+        _lac3.metric("매수 가능 금액", f"${_la['buying_power']:,.2f}")
+        _lac4.metric("계정 상태", _la["status"])
+        _lcashpct = _la['cash'] / _la['equity'] * 100 if _la['equity'] else 0.0
+        _lav0 = _pnl_verdict(_lpnl_pct, "라이브 시드 $5K")
+        _hbadge(_lav0[0], _lav0[1] + f" 현금비중 {_lcashpct:.0f}%.")
+        if data_live["positions"]:
+            _lposdf = pd.DataFrame(data_live["positions"])
+            _lposdf["avg_entry"] = _lposdf["avg_entry"].apply(lambda x: f"${x:.2f}")
+            _lposdf["current"] = _lposdf["current"].apply(lambda x: f"${x:.2f}")
+            _lposdf["market_value"] = _lposdf["market_value"].apply(lambda x: f"${x:,.2f}")
+            _lposdf["unrealized_pnl"] = _lposdf["unrealized_pnl"].apply(lambda x: f"${x:+,.2f}")
+            _lposdf["unrealized_pct"] = _lposdf["unrealized_pct"].apply(lambda x: f"{x:+.2f}%")
+            st.dataframe(_lposdf, use_container_width=True, hide_index=True)
+        else:
+            st.info("라이브 보유 포지션 없음 — 레짐이 현금 유지 중이거나 진입 조건 미충족.")
+    st.markdown("---")
+
     st.markdown("### 💼 페이퍼 계정 상세")
     if st.button("🔄 새로고침", key="refresh_alpaca"):
         st.cache_data.clear()
@@ -1254,6 +1345,10 @@ elif page == "💰 실시간 현황":
         c3.metric("매수 가능 금액", f"${acc['buying_power']:,.2f}",
                   help="현재 추가로 매수 가능한 최대 금액.")
         c4.metric("계정 상태", acc["status"])
+        _cashpct = acc['cash'] / acc['equity'] * 100 if acc['equity'] else 0.0
+        _pv0 = _pnl_verdict(pnl_pct, "시드 $100K")
+        _hbadge(_pv0[0], _pv0[1] + f" 현금비중 {_cashpct:.0f}%" +
+                ("(전량 현금 — 미보유 또는 방어 국면)." if _cashpct > 99 else "."))
 
         st.markdown("### 현재 보유 포지션")
         if data["positions"]:
