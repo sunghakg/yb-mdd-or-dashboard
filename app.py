@@ -912,14 +912,72 @@ elif page == "💰 실시간 현황":
     # ── 자동 로드: 창을 열면 regime/VIX/Alpaca(페이퍼+라이브) 자동 조회 ──
     _lc1, _lc2 = st.columns([3, 1])
     with _lc1:
-        st.caption("📡 창을 열면 regime·VIX·Alpaca 페이퍼+라이브 계정을 자동으로 불러옵니다 "
-                   "(regime 30분·계정 5분 캐시). 즉시 갱신하려면 오른쪽 버튼.")
+        st.caption("📡 창을 열면 자동 로드: 라이브(EOD 원장·키 불필요) + regime·VIX + 페이퍼(Alpaca API) "
+                   "(원장/regime 캐시). 즉시 갱신하려면 오른쪽 버튼.")
     with _lc2:
         if st.button("🔄 지금 새로고침", key="refresh_live_top", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
-    # 최상단 3계좌 요약 자리(아래에서 데이터 받은 뒤 이 자리에 렌더)
+    # ══ 🔴 LIVE 실거래 계좌 (EOD 원장 기준 · API 키 불필요) ═══════════════
+    _live_p = Path(__file__).parent / "data" / "live" / "eod_equity_ledger_live.csv"
+
+    @st.cache_data(ttl=300)
+    def _load_live_ledger(_mtime):
+        if not _live_p.exists():
+            return None
+        try:
+            df = pd.read_csv(_live_p, parse_dates=["date"]).dropna(subset=["equity"])
+            return df if len(df) else None
+        except Exception:
+            return None
+
+    _live_led = _load_live_ledger(_live_p.stat().st_mtime if _live_p.exists() else 0)
+    LIVE_SEED = 5000.0
+
+    st.markdown(
+        "<div style='background:linear-gradient(135deg,#3B2836,#4C2A34);border-left:6px solid #BF616A;"
+        "padding:6px 16px;border-radius:10px;margin:4px 0 10px'>"
+        "<span style='font-size:1.25em;font-weight:800;color:#ECEFF4'>🔴 LIVE 실거래 계좌</span>"
+        "<span style='color:#D8DEE9;opacity:0.85'> &nbsp;— 실제 돈으로 운영 중인 계좌 (가장 중요)</span></div>",
+        unsafe_allow_html=True)
+
+    if _live_led is None:
+        st.warning("라이브 EOD 원장(`data/live/eod_equity_ledger_live.csv`)이 아직 없습니다. "
+                   "라이브 봇 eod_sync가 실행되면 매일 자동 갱신됩니다 (API 키 없이 표시).")
+    else:
+        _lrow = _live_led.iloc[-1]
+        _leq = float(_lrow["equity"]); _lcash = float(_lrow["cash"])
+        _lnpos = int(_lrow["n_pos"]) if "n_pos" in _live_led.columns else 0
+        _ldate = pd.to_datetime(_lrow["date"]).date()
+        _lret = (_leq / LIVE_SEED - 1) * 100
+        _lchg = (_leq - float(_live_led.iloc[-2]["equity"])) if len(_live_led) >= 2 else None
+        _lh1, _lh2, _lh3, _lh4 = st.columns(4)
+        _lh1.metric("총 자산 (Equity)", f"${_leq:,.2f}",
+                    f"{_lchg:+,.2f} 전일대비" if _lchg is not None else None,
+                    help="라이브 EOD 원장의 최신 총 자산.")
+        _lh2.metric("현금", f"${_lcash:,.2f}")
+        _lh3.metric("보유 종목 수", f"{_lnpos}개")
+        _lh4.metric("시드 대비", f"{_lret:+.2f}%", f"$5,000 → ${_leq:,.0f}")
+        st.caption(f"🔴 실거래 · **EOD 원장 기준** · 최신 {_ldate} · API 키 없이 표시 · 시드 $5,000 "
+                   f"(라이브 봇 eod_sync가 매일 갱신)")
+        if len(_live_led) >= 2:
+            import altair as _altl
+            st.altair_chart(
+                _altl.Chart(_live_led[["date", "equity"]]).mark_line(
+                    point=True, strokeWidth=2.5, color="#BF616A").encode(
+                    x=_altl.X("date:T", title="날짜"),
+                    y=_altl.Y("equity:Q", title="LIVE Equity ($)",
+                              scale=_altl.Scale(zero=False), axis=_altl.Axis(format="$,.0f")),
+                    tooltip=[_altl.Tooltip("date:T", title="날짜", format="%Y-%m-%d"),
+                             _altl.Tooltip("equity:Q", title="Equity", format="$,.2f")],
+                ).properties(height=240),
+                use_container_width=True)
+        else:
+            st.info("라이브 EOD 기록이 1일치입니다 — 며칠 쌓이면 equity 곡선이 표시됩니다.")
+    st.markdown("---")
+
+    # 3계좌 요약 자리(아래에서 페이퍼 데이터 받은 뒤 이 자리에 렌더)
     _top_summary = st.container()
     _top_summary.markdown("### 🧮 3계좌 요약 — 🧪 백테 · 📝 페이퍼 · 💰 라이브(실거래)")
 
@@ -1139,7 +1197,6 @@ elif page == "💰 실시간 현황":
             return {"error": str(e)}
 
     data = _fetch_alpaca(paper=True)
-    data_live = _fetch_alpaca(paper=False)
 
     # ── 최상단 3계좌 요약 렌더 (백테 · 페이퍼 · 라이브) ──
     _bt_final = H_CHAMP["Final_mult"] * 100_000
@@ -1160,14 +1217,15 @@ elif page == "💰 실시간 현황":
                 st.metric("총 자산", f"${_pa['equity']:,.0f}", f"{_pchg:+,.0f} ({_ppct:+.2f}%) 오늘")
                 st.caption(f"현금 ${_pa['cash']:,.0f} · {_pa['status']}")
         with _ac3:
-            st.markdown("**💰 라이브 (실거래)**")
-            if "error" in data_live:
-                st.caption(f"⚠ {data_live['error']}")
+            st.markdown("**💰 라이브 (실거래 · EOD)**")
+            if _live_led is None:
+                st.caption("⚠ EOD 원장 대기 중")
             else:
-                _li = data_live["account"]; _lchg = _li["equity"] - _li["last_equity"]
-                _lpct = (_lchg / _li["last_equity"] * 100) if _li["last_equity"] else 0.0
-                st.metric("총 자산", f"${_li['equity']:,.0f}", f"{_lchg:+,.0f} ({_lpct:+.2f}%) 오늘")
-                st.caption(f"현금 ${_li['cash']:,.0f} · {_li['status']}")
+                _lr = _live_led.iloc[-1]
+                _leq3 = float(_lr["equity"])
+                _lret3 = (_leq3 / LIVE_SEED - 1) * 100
+                st.metric("총 자산", f"${_leq3:,.0f}", f"{_lret3:+.2f}% vs $5K")
+                st.caption(f"현금 ${float(_lr['cash']):,.0f} · {pd.to_datetime(_lr['date']).date()} EOD")
         st.markdown("---")
 
     st.markdown("### 💼 페이퍼 계정 상세")
@@ -1216,39 +1274,21 @@ elif page == "💰 실시간 현황":
         else:
             st.info("오늘 주문 없음")
 
-        # ── 라이브(실거래) 계정 상세 ──────────────────────────────
+        # ── 라이브(실거래) EOD 원장 — 최근 기록 (키 불필요) ──────────
         st.markdown("---")
-        st.markdown("### 💰 라이브(실거래) 계정 상세")
-        if "error" in data_live:
-            st.info(f"라이브 계정 미연결 — {data_live['error']}")
-            st.caption("Streamlit Cloud → Settings → Secrets에 라이브 키 2줄 추가:")
-            st.code('ALPACA_LIVE_API_KEY = "<BUBE live API key>"\n'
-                    'ALPACA_LIVE_SECRET_KEY = "<BUBE live secret>"', language="toml")
+        st.markdown("### 💰 라이브(실거래) EOD 원장 — 최근 기록")
+        if _live_led is None:
+            st.info("라이브 EOD 원장 대기 중 — 라이브 봇 eod_sync 실행 시 생성됩니다.")
         else:
-            _lacc = data_live["account"]
-            _l1, _l2, _l3, _l4 = st.columns(4)
-            _l1.metric("총 자산 (Equity)", f"${_lacc['equity']:,.2f}",
-                       f"{_lacc['equity']-_lacc['last_equity']:+,.2f} 오늘")
-            _l2.metric("현금", f"${_lacc['cash']:,.2f}")
-            _l3.metric("매수 가능 금액", f"${_lacc['buying_power']:,.2f}")
-            _l4.metric("계정 상태", _lacc["status"])
-            st.markdown("**현재 보유 포지션 (라이브)**")
-            if data_live["positions"]:
-                _lpos = pd.DataFrame(data_live["positions"])
-                _lpos["avg_entry"] = _lpos["avg_entry"].apply(lambda x: f"${x:.2f}")
-                _lpos["current"] = _lpos["current"].apply(lambda x: f"${x:.2f}")
-                _lpos["market_value"] = _lpos["market_value"].apply(lambda x: f"${x:,.2f}")
-                _lpos["unrealized_pnl"] = _lpos["unrealized_pnl"].apply(lambda x: f"${x:+,.2f}")
-                _lpos["unrealized_pct"] = _lpos["unrealized_pct"].apply(lambda x: f"{x:+.2f}%")
-                st.dataframe(_lpos, use_container_width=True, hide_index=True)
-            else:
-                st.info("라이브 보유 포지션 없음")
-            st.markdown("**라이브 오늘 주문**")
-            if data_live["orders_today"]:
-                st.dataframe(pd.DataFrame(data_live["orders_today"]),
-                             use_container_width=True, hide_index=True)
-            else:
-                st.info("라이브 오늘 주문 없음")
+            _lt = _live_led.sort_values("date", ascending=False).head(30).copy()
+            _lt["date"] = _lt["date"].dt.strftime("%Y-%m-%d")
+            _lt["equity"] = _lt["equity"].apply(lambda x: f"${x:,.2f}")
+            _lt["cash"] = _lt["cash"].apply(lambda x: f"${x:,.2f}")
+            _lt = _lt.rename(columns={"date": "날짜", "equity": "총자산",
+                                      "cash": "현금", "n_pos": "보유종목수"})
+            st.dataframe(_lt, use_container_width=True, hide_index=True)
+            st.caption("라이브 봇 EOD 원장(API 키 없이 표시). 종목별 상세는 원장에 없음 — "
+                       "봇 텔레그램/Alpaca 콘솔에서 확인.")
 
         # ── 라이브 EOD equity 추이 (파일 기반, 라이브 키 없이도 표시) ──
         st.markdown("---")
