@@ -17,35 +17,35 @@
     "period": "2010-05-25 ~ 2026-07-02"
   },
   "headline_16y_CHAMP": {
-    "CAGR": 60.48777392859097,
+    "CAGR": 59.8735649120073,
     "MDD": -23.47854578706444,
-    "Sharpe": 1.688184450684754,
-    "Calmar": 2.5762998474086434,
-    "Final_mult": 2031.8077781799211
+    "Sharpe": 1.6741614931581512,
+    "Calmar": 2.55013941046531,
+    "Final_mult": 1912.6131129333205
   },
   "headline_16y_BASE": {
-    "CAGR": 50.557256116555415,
+    "CAGR": 50.08115167325249,
     "MDD": -21.14081204345114,
-    "Sharpe": 1.5897198996311737,
-    "Calmar": 2.391452892757575,
-    "Final_mult": 726.4878003021848
+    "Sharpe": 1.5772744212135044,
+    "Calmar": 2.3689322609897707,
+    "Final_mult": 691.1353988929295
   },
   "bootstrap_CHAMP": {
-    "cagr_p05": 42.77122637151021,
-    "cagr_p50": 60.52708852772517,
-    "cagr_p95": 80.72579722575983,
-    "mdd_p05": -42.58868684642069,
-    "mdd_p50": -30.844238482379627,
-    "mdd_p95": -23.625603276162273,
-    "cal_p05": 1.1208941493043143,
-    "cal_p50": 1.9499570235438515,
-    "cal_p95": 3.1400089874885575,
-    "p_mdd_worse_than_30": 56.379999999999995,
-    "p_mdd_worse_than_40": 9.22,
+    "cagr_p05": 43.086990596620815,
+    "cagr_p50": 60.69337858883493,
+    "cagr_p95": 80.54791298863859,
+    "mdd_p05": -42.54613934186732,
+    "mdd_p50": -30.678475636141112,
+    "mdd_p95": -23.699531512409287,
+    "cal_p05": 1.1285409120571872,
+    "cal_p50": 1.9590424512476496,
+    "cal_p95": 3.1111415626830774,
+    "p_mdd_worse_than_30": 54.96,
+    "p_mdd_worse_than_40": 8.86,
     "p_cagr_positive": 100.0,
-    "p_cagr_above_30": 99.88
+    "p_cagr_above_30": 99.86
   },
-  "trades_count": 5417,
+  "trades_count": 5418,
   "files": {
     "xlsx": "/home/runner/work/bube-v1-trader/bube-v1-trader/backtest/bube_champ_nomargin_16yr/bube_champ_nomargin_16yr.xlsx",
     "equity_csv": "/home/runner/work/bube-v1-trader/bube-v1-trader/backtest/bube_champ_nomargin_16yr/equity_curves.csv",
