@@ -8,38 +8,44 @@
       "hi": 2.0
     },
     "alloc_cap": 1.0,
-    "period": "2010-05-25 ~ 2026-07-01"
+    "lb_swide": {
+      "on": true,
+      "base": 0.08,
+      "center": 20.0,
+      "cap": 1.5
+    },
+    "period": "2010-05-25 ~ 2026-07-02"
   },
   "headline_16y_CHAMP": {
-    "CAGR": 59.35892079555642,
-    "MDD": -26.332390584908726,
-    "Sharpe": 1.6647799925685014,
-    "Calmar": 2.254216935000783,
-    "Final_mult": 1813.522315155426
+    "CAGR": 60.48777392859097,
+    "MDD": -23.47854578706444,
+    "Sharpe": 1.688184450684754,
+    "Calmar": 2.5762998474086434,
+    "Final_mult": 2031.8077781799211
   },
   "headline_16y_BASE": {
-    "CAGR": 49.303443606199046,
-    "MDD": -25.03538445292135,
-    "Sharpe": 1.560201595968264,
-    "Calmar": 1.9693503688314995,
-    "Final_mult": 634.9661160803001
+    "CAGR": 50.557256116555415,
+    "MDD": -21.14081204345114,
+    "Sharpe": 1.5897198996311737,
+    "Calmar": 2.391452892757575,
+    "Final_mult": 726.4878003021848
   },
   "bootstrap_CHAMP": {
-    "cagr_p05": 41.83834749800581,
-    "cagr_p50": 59.380847788091884,
-    "cagr_p95": 79.65362871997918,
-    "mdd_p05": -43.311080629490796,
-    "mdd_p50": -31.101249998567194,
-    "mdd_p95": -23.891534950285433,
-    "cal_p05": 1.0824969965537676,
-    "cal_p50": 1.8938729865551611,
-    "cal_p95": 3.0435383084307945,
-    "p_mdd_worse_than_30": 58.42,
-    "p_mdd_worse_than_40": 10.22,
+    "cagr_p05": 42.77122637151021,
+    "cagr_p50": 60.52708852772517,
+    "cagr_p95": 80.72579722575983,
+    "mdd_p05": -42.58868684642069,
+    "mdd_p50": -30.844238482379627,
+    "mdd_p95": -23.625603276162273,
+    "cal_p05": 1.1208941493043143,
+    "cal_p50": 1.9499570235438515,
+    "cal_p95": 3.1400089874885575,
+    "p_mdd_worse_than_30": 56.379999999999995,
+    "p_mdd_worse_than_40": 9.22,
     "p_cagr_positive": 100.0,
     "p_cagr_above_30": 99.88
   },
-  "trades_count": 5406,
+  "trades_count": 5417,
   "files": {
     "xlsx": "/home/runner/work/bube-v1-trader/bube-v1-trader/backtest/bube_champ_nomargin_16yr/bube_champ_nomargin_16yr.xlsx",
     "equity_csv": "/home/runner/work/bube-v1-trader/bube-v1-trader/backtest/bube_champ_nomargin_16yr/equity_curves.csv",
